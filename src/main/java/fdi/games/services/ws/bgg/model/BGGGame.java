@@ -3,11 +3,6 @@ package fdi.games.services.ws.bgg.model;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
-/**
- * A board game on BGG.
- *
- * @since 1.0
- */
 public class BGGGame {
 
 	@XmlAttribute(name = "objectid", required = true)
@@ -30,6 +25,13 @@ public class BGGGame {
 
 	@XmlElement(name = "numplays")
 	private Long plays;
+
+	@XmlElement(name = "stats")
+	private BGGGameStat stats;
+
+	public BGGGameStat getStats() {
+		return this.stats;
+	}
 
 	public long getPlays() {
 		return this.plays;

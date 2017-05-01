@@ -26,7 +26,8 @@ public class BoardGameGeekClient {
 	private static final String BGG_XML_API_BASE = "https://www.boardgamegeek.com/xmlapi2/";
 
 	public BGGGameList getCollection(final String username) throws BoardGameGeekException {
-		final String url = BGG_XML_API_BASE + "collection?excludesubtype=boardgameexpansion&own=1&username=" + username;
+		final String url = BGG_XML_API_BASE + "collection?excludesubtype=boardgameexpansion&own=1&stats=1&username="
+				+ username;
 		logger.debug("get collection for user {} with url={}", username, url);
 
 		try {
