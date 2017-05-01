@@ -7,6 +7,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 
 @Configuration
 @EnableWebMvc
-@ComponentScan(basePackages = { "fdi.games.services.mvc" })
-public class WebMvcConfig extends WebMvcConfigurerAdapter {
+@ComponentScan(basePackages = { "fdi.games.services" })
+public class AppConfig extends WebMvcConfigurerAdapter {
 }

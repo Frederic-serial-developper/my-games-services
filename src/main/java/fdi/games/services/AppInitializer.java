@@ -17,12 +17,12 @@ public class AppInitializer implements WebApplicationInitializer {
 
 		// Déclaration de la classe de configuration
 		// du contexte (dataSource, repositories, spring-security …)
-		rootContext.register(ContextConfig.class);
+		rootContext.register(AppConfig.class);
 		servletContext.addListener(new ContextLoaderListener(rootContext));
 
 		// Création du dispatcher de servlet
 		final AnnotationConfigWebApplicationContext dispatcherServlet = new AnnotationConfigWebApplicationContext();
-		dispatcherServlet.register(WebMvcConfig.class);
+		dispatcherServlet.register(AppConfig.class);
 
 		// Déclaration du dispatcher de servlet
 		final ServletRegistration.Dynamic dispatcher = servletContext.addServlet("dispatcher",
