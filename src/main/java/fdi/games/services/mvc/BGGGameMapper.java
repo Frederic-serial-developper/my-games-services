@@ -17,7 +17,7 @@ public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
 		game.setSource(BoardGameSource.BOARDGAMEGEEK);
 		game.setImage(source.getThumbnailUrl());
 		game.setRank(5.3); // TODO calculate rank
-		game.setPlays(source.getPlays());
+		game.setPlaysCount(source.getPlays());
 		return game;
 	}
 

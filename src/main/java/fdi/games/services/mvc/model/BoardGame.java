@@ -7,7 +7,7 @@ public class BoardGame {
 	private BoardGameSource source;
 	private Double rank;
 	private String image;
-	private Long plays;
+	private Long playsCount;
 
 	public Long getId() {
 		return this.id;
@@ -49,12 +49,12 @@ public class BoardGame {
 		this.image = image;
 	}
 
-	public Long getPlays() {
-		return this.plays;
+	public Long getPlaysCount() {
+		return this.playsCount;
 	}
 
-	public void setPlays(Long plays) {
-		this.plays = plays;
+	public void setPlaysCount(Long plays) {
+		this.playsCount = plays;
 	}
 
 }
