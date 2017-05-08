@@ -1,4 +1,4 @@
-package fdi.games.services.mvc;
+package fdi.games.services.business;
 
 public interface Mapper<Source, Target> {
 

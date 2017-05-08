@@ -1,4 +1,4 @@
-package fdi.games.services.mvc.model;
+package fdi.games.services.model;
 
 public class BoardGame {
 

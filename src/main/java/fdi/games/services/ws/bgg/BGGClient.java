@@ -19,15 +19,20 @@ import org.springframework.stereotype.Service;
 import fdi.games.services.ws.bgg.model.BGGGameList;
 
 @Service
-public class BoardGameGeekClient {
+public class BGGClient {
 
-	final static Logger logger = LoggerFactory.getLogger(BoardGameGeekClient.class);
+	final static Logger logger = LoggerFactory.getLogger(BGGClient.class);
 
 	private static final String BGG_XML_API_BASE = "https://www.boardgamegeek.com/xmlapi2/";
 
-	public BGGGameList getCollection(final String username) throws BoardGameGeekException {
-		final String url = BGG_XML_API_BASE + "collection?excludesubtype=boardgameexpansion&own=1&stats=1&username="
-				+ username;
+	public BGGGameList getCollection(final String username, boolean includeExpansions) throws BGGException {
+		String url = BGG_XML_API_BASE + "collection?";
+		url = url + "own=1";
+		url = url + "&stats=1";
+		url = url + "&username=" + username;
+		if (!includeExpansions) {
+			url = url + "&excludesubtype=boardgameexpansion";
+		}
 		logger.debug("get collection for user {} with url={}", username, url);
 
 		try {
@@ -54,7 +59,7 @@ public class BoardGameGeekClient {
 
 			return (BGGGameList) result;
 		} catch (JAXBException | IOException | InterruptedException e) {
-			throw new BoardGameGeekException("error while retrieving collection from boardgamegeek with url=" + url, e);
+			throw new BGGException("error while retrieving collection from boardgamegeek with url=" + url, e);
 		}
 	}
 
