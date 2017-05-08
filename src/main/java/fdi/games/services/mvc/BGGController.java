@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import fdi.games.services.business.BoardGameService;
+import fdi.games.services.business.BoardGameServiceException;
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
 import fdi.games.services.ws.bgg.BGGException;
@@ -30,16 +31,18 @@ public class BGGController {
 
 	@GetMapping(path = "collection/{username}", produces = "application/json; charset=UTF-8")
 	public Collection<BoardGame> getCollection(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions) throws BGGException {
+			@RequestParam("includeExpansions") boolean includeExpansions)
+			throws BGGException, BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
 		final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions);
-		logger.debug("found {} games for user {}", result, username);
+		logger.debug("found {} games for user {}", result.size(), username);
 		return result;
 	}
 
 	@GetMapping(path = "collection/{username}/stats", produces = "application/json; charset=UTF-8")
 	public CollectionStatistics getCollectionStats(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions) throws BGGException {
+			@RequestParam("includeExpansions") boolean includeExpansions)
+			throws BGGException, BoardGameServiceException {
 		logger.info("retrieve collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 		final CollectionStatistics statistics = this.service.getStatistics(username, includeExpansions);
 		return statistics;

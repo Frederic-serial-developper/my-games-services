@@ -1,7 +1,9 @@
 package fdi.games.services.business;
 
 import java.util.Collection;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -19,7 +21,6 @@ import fdi.games.services.model.RatingLevel;
 import fdi.games.services.mvc.BGGController;
 import fdi.games.services.ws.bgg.BGGClient;
 import fdi.games.services.ws.bgg.BGGException;
-import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameList;
 
 @Service
@@ -33,31 +34,31 @@ public class BoardGameService {
 	@Inject
 	private BGGGameMapper mapper;
 
-	private final LoadingCache<Long, BoardGame> gamesCache = CacheBuilder.newBuilder().maximumSize(1000)
-			.expireAfterWrite(10, TimeUnit.MINUTES).build(new CacheLoader<Long, BoardGame>() {
+	private final LoadingCache<String, Collection<BoardGame>> gamesCache = CacheBuilder.newBuilder().maximumSize(1000)
+			.expireAfterWrite(10, TimeUnit.MINUTES).build(new CacheLoader<String, Collection<BoardGame>>() {
 				@Override
-				public BoardGame load(Long id) throws BoardGameServiceException {
-					throw new BoardGameServiceException("not yet implemented");
+				public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
+					logger.info("fetch collection from boardgamegeek");
+					final BGGGameList result = BoardGameService.this.bggClient.getCollection(username, false);
+					logger.debug("found {} games for user {}", result.getBoardGames().size(), username);
+					return result.getBoardGames().stream().map(game -> BoardGameService.this.mapper.map(game))
+							.collect(Collectors.toList());
+
 				}
 			});
 
-	public Collection<BoardGame> getCollection(String username, boolean includeExpansions) throws BGGException {
+	public Collection<BoardGame> getCollection(String username, boolean includeExpansions)
+			throws BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
-		if (this.gamesCache.size() > 0) {
-			logger.info("retrieve {} games from cache", this.gamesCache.size());
-			return this.gamesCache.asMap().values();
+		try {
+			return this.gamesCache.get(username);
+		} catch (final ExecutionException e) {
+			throw new BoardGameServiceException("Error while fetching collection", e);
 		}
-		logger.info("fetch collection from boardgamegeek");
-		final BGGGameList result = this.bggClient.getCollection(username, includeExpansions);
-		logger.debug("found {} games for user {}", result, username);
-		for (final BGGGame bggGame : result.getBoardGames()) {
-			final BoardGame game = this.mapper.map(bggGame);
-			this.gamesCache.put(game.getId(), game);
-		}
-		return this.gamesCache.asMap().values();
 	}
 
-	public CollectionStatistics getStatistics(String username, boolean includeExpansions) throws BGGException {
+	public CollectionStatistics getStatistics(String username, boolean includeExpansions)
+			throws BoardGameServiceException {
 		final CollectionStatistics stats = new CollectionStatistics();
 
 		final Collection<BoardGame> games = getCollection(username, includeExpansions);
