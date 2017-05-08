@@ -1,6 +1,7 @@
 package fdi.games.services.mvc;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import javax.inject.Inject;
 
@@ -17,7 +18,6 @@ import fdi.games.services.business.BoardGameService;
 import fdi.games.services.business.BoardGameServiceException;
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
-import fdi.games.services.ws.bgg.BGGException;
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -31,20 +31,28 @@ public class BGGController {
 
 	@GetMapping(path = "collection/{username}", produces = "application/json; charset=UTF-8")
 	public Collection<BoardGame> getCollection(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions)
-			throws BGGException, BoardGameServiceException {
+			@RequestParam("includeExpansions") boolean includeExpansions) {
 		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
-		final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions);
-		logger.debug("found {} games for user {}", result.size(), username);
-		return result;
+		try {
+			final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions);
+			logger.debug("found {} games for user {}", result.size(), username);
+			return result;
+		} catch (final BoardGameServiceException e) {
+			logger.error("error while retrieving collection for " + username + " : " + e.getMessage());
+			return Collections.emptyList();
+		}
 	}
 
 	@GetMapping(path = "collection/{username}/stats", produces = "application/json; charset=UTF-8")
 	public CollectionStatistics getCollectionStats(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions)
-			throws BGGException, BoardGameServiceException {
+			@RequestParam("includeExpansions") boolean includeExpansions) {
 		logger.info("retrieve collection statistics for user {}, includeExpansions={}", username, includeExpansions);
-		final CollectionStatistics statistics = this.service.getStatistics(username, includeExpansions);
-		return statistics;
+		try {
+			final CollectionStatistics statistics = this.service.getStatistics(username, includeExpansions);
+			return statistics;
+		} catch (final BoardGameServiceException e) {
+			logger.error("error while retrieving collection statistics for " + username + " : " + e.getMessage());
+			return new CollectionStatistics();
+		}
 	}
 }

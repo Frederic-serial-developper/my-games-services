@@ -18,7 +18,6 @@ import com.google.common.cache.LoadingCache;
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
 import fdi.games.services.model.RatingLevel;
-import fdi.games.services.mvc.BGGController;
 import fdi.games.services.ws.bgg.BGGClient;
 import fdi.games.services.ws.bgg.BGGException;
 import fdi.games.services.ws.bgg.model.BGGGameList;
@@ -26,7 +25,7 @@ import fdi.games.services.ws.bgg.model.BGGGameList;
 @Service
 public class BoardGameService {
 
-	final static Logger logger = LoggerFactory.getLogger(BGGController.class);
+	final static Logger logger = LoggerFactory.getLogger(BoardGameService.class);
 
 	@Inject
 	private BGGClient bggClient;
