@@ -64,7 +64,8 @@ public class BoardGameService {
 
 		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 
-		stats.setTotalSize(games.size());
+		stats.setTotalSize(new Long(games.size()));
+		stats.setTotalPlays(countPlays(games));
 
 		for (final BoardGame boardGame : games) {
 			final Double rating = boardGame.getRating();
@@ -78,5 +79,13 @@ public class BoardGameService {
 		}
 
 		return stats;
+	}
+
+	private Long countPlays(Collection<BoardGame> games) {
+		Long total = new Long(0);
+		for (final BoardGame boardGame : games) {
+			total = total + boardGame.getPlaysCount();
+		}
+		return total;
 	}
 }

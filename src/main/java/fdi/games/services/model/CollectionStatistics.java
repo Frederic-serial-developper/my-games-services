@@ -5,15 +5,25 @@ import java.util.Map;
 
 public class CollectionStatistics {
 
-	private int totalSize;
+	private Long totalSize;
+
+	private Long totalPlays;
 
 	private final Map<RatingLevel, Integer> gamesByRatingLevel = new HashMap<>();
 
-	public int getTotalSize() {
+	public Long getTotalPlays() {
+		return this.totalPlays;
+	}
+
+	public void setTotalPlays(Long totalPlays) {
+		this.totalPlays = totalPlays;
+	}
+
+	public Long getTotalSize() {
 		return this.totalSize;
 	}
 
-	public void setTotalSize(int totalSize) {
+	public void setTotalSize(Long totalSize) {
 		this.totalSize = totalSize;
 	}
 
