@@ -1,8 +1,11 @@
 package fdi.games.services.ws.bgg.model;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
+@XmlAccessorType(XmlAccessType.FIELD)
 public class BGGGame {
 
 	@XmlAttribute(name = "objectid", required = true)
@@ -13,6 +16,9 @@ public class BGGGame {
 
 	@XmlElement(name = "name")
 	private String name;
+
+	@XmlAttribute(name = "subtype")
+	private String type;
 
 	@XmlElement(name = "originalname")
 	private String originalname;
@@ -47,6 +53,14 @@ public class BGGGame {
 
 	public String getName() {
 		return this.name;
+	}
+
+	public String getType() {
+		return this.type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
 	}
 
 	public int getYearPublished() {

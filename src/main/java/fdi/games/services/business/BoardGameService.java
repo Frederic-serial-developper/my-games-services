@@ -36,10 +36,17 @@ public class BoardGameService {
 	private final LoadingCache<String, Collection<BoardGame>> gamesCache = CacheBuilder.newBuilder().maximumSize(1000)
 			.expireAfterWrite(10, TimeUnit.MINUTES).build(new CacheLoader<String, Collection<BoardGame>>() {
 				@Override
-				public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
+				public Collection<BoardGame> load(String usernameKey) throws BoardGameServiceException, BGGException {
 					logger.info("fetch collection from boardgamegeek");
-					final BGGGameList result = BoardGameService.this.bggClient.getCollection(username, false);
-					logger.debug("found {} games for user {}", result.getBoardGames().size(), username);
+					final String[] keys = usernameKey.split("_");
+					if (keys.length != 2) {
+						throw new BoardGameServiceException("invalid index : " + usernameKey);
+					}
+					final boolean includeExpansion = keys[0].equalsIgnoreCase("true");
+					final String username = keys[1];
+					final BGGGameList result = BoardGameService.this.bggClient.getCollection(username,
+							includeExpansion);
+					logger.debug("found {} games for user {}", result.getBoardGames().size(), usernameKey);
 					return result.getBoardGames().stream().map(game -> BoardGameService.this.mapper.map(game))
 							.collect(Collectors.toList());
 
@@ -50,7 +57,7 @@ public class BoardGameService {
 			throws BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
 		try {
-			return this.gamesCache.get(username);
+			return this.gamesCache.get(includeExpansions + "_" + username);
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("Error while fetching collection", e);
 		}

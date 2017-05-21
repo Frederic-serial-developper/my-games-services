@@ -8,6 +8,8 @@ public class BoardGame {
 
 	private BoardGameSource source;
 
+	private BoardGameType type;
+
 	private Double rating;
 
 	private String image;
@@ -100,6 +102,14 @@ public class BoardGame {
 
 	public void setPlaysCount(Long plays) {
 		this.playsCount = plays;
+	}
+
+	public BoardGameType getType() {
+		return this.type;
+	}
+
+	public void setType(BoardGameType type) {
+		this.type = type;
 	}
 
 }

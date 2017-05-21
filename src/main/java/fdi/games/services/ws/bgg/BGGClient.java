@@ -30,11 +30,21 @@ public class BGGClient {
 		url = url + "own=1";
 		url = url + "&stats=1";
 		url = url + "&username=" + username;
-		if (!includeExpansions) {
-			url = url + "&excludesubtype=boardgameexpansion";
-		}
-		logger.debug("get collection for user {} with url={}", username, url);
 
+		final BGGGameList games = getCollection(url + "&excludesubtype=boardgameexpansion");
+
+		if (includeExpansions) {
+			// execute a separated request to manage expansions because of a bug
+			// in BGG XML2 api
+			final BGGGameList expansions = getCollection(url + "&subtype=boardgameexpansion");
+			games.getBoardGames().addAll(expansions.getBoardGames());
+		}
+
+		return games;
+	}
+
+	private BGGGameList getCollection(String url) throws BGGException {
+		logger.debug("get collection for with url={}", url);
 		try {
 			final URL bggUrl = new URL(url);
 			final URLConnection connection = bggUrl.openConnection();

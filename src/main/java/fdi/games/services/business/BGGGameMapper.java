@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.BoardGameSource;
+import fdi.games.services.model.BoardGameType;
 import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameStat;
 
@@ -18,6 +19,12 @@ public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
 		game.setName(source.getName() == null ? source.getOriginalname() : source.getName());
 		game.setSource(BoardGameSource.BOARDGAMEGEEK);
 		game.setImage(source.getThumbnailUrl());
+
+		if (source.getType().equalsIgnoreCase("boardgame")) {
+			game.setType(BoardGameType.GAME);
+		} else {
+			game.setType(BoardGameType.EXPANSION);
+		}
 
 		final BGGGameStat stats = source.getStats();
 		if (stats != null) {
