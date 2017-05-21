@@ -25,19 +25,37 @@ public class BGGClient {
 
 	private static final String BGG_XML_API_BASE = "https://www.boardgamegeek.com/xmlapi2/";
 
-	public BGGGameList getCollection(final String username, boolean includeExpansions) throws BGGException {
+	public BGGGameList getCollection(final String username, boolean includeExpansions, boolean includePreviouslyOwned)
+			throws BGGException {
 		String url = BGG_XML_API_BASE + "collection?";
-		url = url + "own=1";
+		url = url + "username=" + username;
 		url = url + "&stats=1";
-		url = url + "&username=" + username;
+		if (includePreviouslyOwned) {
+			url = url + "&prevowned=1";
+		} else {
+			url = url + "&own=1";
+		}
 
 		final BGGGameList games = getCollection(url + "&excludesubtype=boardgameexpansion");
 
 		if (includeExpansions) {
+			logger.debug("get expansions for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
 			// execute a separated request to manage expansions because of a bug
 			// in BGG XML2 api
 			final BGGGameList expansions = getCollection(url + "&subtype=boardgameexpansion");
-			games.getBoardGames().addAll(expansions.getBoardGames());
+			if (expansions != null && expansions.getBoardGames() != null) {
+				games.getBoardGames().addAll(expansions.getBoardGames());
+			}
+		}
+
+		if (includePreviouslyOwned) {
+			logger.debug("get owned for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
+			// owned and previouslyOwned are exclusives, we need to run a
+			// dedicated requests if we want both
+			final BGGGameList ownedGames = getCollection(username, includeExpansions, false);
+			if (ownedGames != null && ownedGames.getBoardGames() != null) {
+				games.getBoardGames().addAll(ownedGames.getBoardGames());
+			}
 		}
 
 		return games;

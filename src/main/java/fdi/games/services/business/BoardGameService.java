@@ -1,6 +1,7 @@
 package fdi.games.services.business;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -39,35 +40,41 @@ public class BoardGameService {
 				public Collection<BoardGame> load(String usernameKey) throws BoardGameServiceException, BGGException {
 					logger.info("fetch collection from boardgamegeek");
 					final String[] keys = usernameKey.split("_");
-					if (keys.length != 2) {
+					if (keys.length != 3) {
 						throw new BoardGameServiceException("invalid index : " + usernameKey);
 					}
-					final boolean includeExpansion = keys[0].equalsIgnoreCase("true");
-					final String username = keys[1];
-					final BGGGameList result = BoardGameService.this.bggClient.getCollection(username,
-							includeExpansion);
-					logger.debug("found {} games for user {}", result.getBoardGames().size(), usernameKey);
+					final String username = keys[0];
+					final boolean includeExpansion = keys[1].equalsIgnoreCase("true");
+					final boolean includePreviouslyOwned = keys[2].equalsIgnoreCase("true");
+					final BGGGameList result = BoardGameService.this.bggClient.getCollection(username, includeExpansion,
+							includePreviouslyOwned);
+					logger.debug("found {} games for user {}",
+							result.getBoardGames() == null ? 0 : result.getBoardGames().size(), usernameKey);
+					if (result.getBoardGames() == null) {
+						return Collections.emptyList();
+					}
 					return result.getBoardGames().stream().map(game -> BoardGameService.this.mapper.map(game))
 							.collect(Collectors.toList());
 
 				}
 			});
 
-	public Collection<BoardGame> getCollection(String username, boolean includeExpansions)
-			throws BoardGameServiceException {
-		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
+	public Collection<BoardGame> getCollection(String username, boolean includeExpansions,
+			boolean includePreviouslyOwned) throws BoardGameServiceException {
+		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
+				includeExpansions, includePreviouslyOwned);
 		try {
-			return this.gamesCache.get(includeExpansions + "_" + username);
+			return this.gamesCache.get(username + "_" + includeExpansions + "_" + includePreviouslyOwned);
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("Error while fetching collection", e);
 		}
 	}
 
-	public CollectionStatistics getStatistics(String username, boolean includeExpansions)
-			throws BoardGameServiceException {
+	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
+			boolean includePreviouslyOwned) throws BoardGameServiceException {
 		final CollectionStatistics stats = new CollectionStatistics();
 
-		final Collection<BoardGame> games = getCollection(username, includeExpansions);
+		final Collection<BoardGame> games = getCollection(username, includeExpansions, includePreviouslyOwned);
 
 		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 

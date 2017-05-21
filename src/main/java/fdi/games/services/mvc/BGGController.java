@@ -31,10 +31,13 @@ public class BGGController {
 
 	@GetMapping(path = "collection/{username}", produces = "application/json; charset=UTF-8")
 	public Collection<BoardGame> getCollection(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions) {
-		logger.info("retrieve collection for user {}, includeExpansions={}", username, includeExpansions);
+			@RequestParam("includeExpansions") boolean includeExpansions,
+			@RequestParam("includePreviouslyOwned") boolean includePreviouslyOwned) {
+		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
+				includeExpansions, includePreviouslyOwned);
 		try {
-			final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions);
+			final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions,
+					includePreviouslyOwned);
 			logger.debug("found {} games for user {}", result.size(), username);
 			return result;
 		} catch (final BoardGameServiceException e) {
@@ -45,10 +48,13 @@ public class BGGController {
 
 	@GetMapping(path = "collection/{username}/stats", produces = "application/json; charset=UTF-8")
 	public CollectionStatistics getCollectionStats(@PathVariable("username") String username,
-			@RequestParam("includeExpansions") boolean includeExpansions) {
-		logger.info("retrieve collection statistics for user {}, includeExpansions={}", username, includeExpansions);
+			@RequestParam("includeExpansions") boolean includeExpansions,
+			@RequestParam("includePreviouslyOwned") boolean includePreviouslyOwned) {
+		logger.info("retrieve collection statistics for user {}, includeExpansions={}, includePreviouslyOwned={}",
+				username, includeExpansions, includePreviouslyOwned);
 		try {
-			final CollectionStatistics statistics = this.service.getStatistics(username, includeExpansions);
+			final CollectionStatistics statistics = this.service.getStatistics(username, includeExpansions,
+					includePreviouslyOwned);
 			return statistics;
 		} catch (final BoardGameServiceException e) {
 			logger.error("error while retrieving collection statistics for " + username + " : " + e.getMessage());
