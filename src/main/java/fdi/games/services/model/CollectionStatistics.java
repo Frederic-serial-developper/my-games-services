@@ -11,6 +11,12 @@ public class CollectionStatistics {
 
 	private final Map<RatingLevel, Integer> gamesByRatingLevel = new HashMap<>();
 
+	private final Map<Integer, Integer> gamesByYear = new HashMap<>();
+
+	public Map<Integer, Integer> getGamesByYear() {
+		return this.gamesByYear;
+	}
+
 	public Long getTotalPlays() {
 		return this.totalPlays;
 	}
@@ -34,6 +40,15 @@ public class CollectionStatistics {
 		}
 		count++;
 		this.gamesByRatingLevel.put(level, count);
+	}
+
+	public void incrementYear(Integer year) {
+		Integer count = this.gamesByYear.get(year);
+		if (count == null) {
+			count = new Integer(0);
+		}
+		count++;
+		this.gamesByYear.put(year, count);
 	}
 
 	public Map<RatingLevel, Integer> getGamesByRatingLevel() {

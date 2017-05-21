@@ -68,17 +68,24 @@ public class BoardGameService {
 		stats.setTotalPlays(countPlays(games));
 
 		for (final BoardGame boardGame : games) {
-			final Double rating = boardGame.getRating();
-			final RatingLevel[] levelsAvailable = RatingLevel.values();
-			for (final RatingLevel ratingLevel : levelsAvailable) {
-				if (ratingLevel.match(rating)) {
-					stats.incrementRatingLevel(ratingLevel);
-					break;
-				}
-			}
+			final RatingLevel ratingLevel = getRatingLevel(boardGame);
+			stats.incrementRatingLevel(ratingLevel);
+
+			stats.incrementYear(boardGame.getYear());
 		}
 
 		return stats;
+	}
+
+	private RatingLevel getRatingLevel(BoardGame game) {
+		final RatingLevel[] levelsAvailable = RatingLevel.values();
+		final Double rating = game.getRating();
+		for (final RatingLevel ratingLevel : levelsAvailable) {
+			if (ratingLevel.match(rating)) {
+				return ratingLevel;
+			}
+		}
+		return null;
 	}
 
 	private Long countPlays(Collection<BoardGame> games) {
