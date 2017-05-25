@@ -19,7 +19,7 @@ import fdi.games.services.business.BoardGameServiceException;
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
 
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/bgg")
 public class BGGController {
