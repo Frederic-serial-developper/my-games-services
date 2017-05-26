@@ -6,6 +6,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -16,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameList;
 
 @Service
@@ -25,7 +28,7 @@ public class BGGClient {
 
 	private static final String BGG_XML_API_BASE = "https://www.boardgamegeek.com/xmlapi2/";
 
-	public BGGGameList getCollection(final String username, boolean includeExpansions, boolean includePreviouslyOwned)
+	public List<BGGGame> getCollection(final String username, boolean includeExpansions, boolean includePreviouslyOwned)
 			throws BGGException {
 		String url = BGG_XML_API_BASE + "collection?";
 		url = url + "username=" + username;
@@ -36,32 +39,28 @@ public class BGGClient {
 			url = url + "&own=1";
 		}
 
-		final BGGGameList games = getCollection(url + "&excludesubtype=boardgameexpansion");
+		final List<BGGGame> games = getCollection(url + "&excludesubtype=boardgameexpansion");
 
 		if (includeExpansions) {
 			logger.debug("get expansions for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
 			// execute a separated request to manage expansions because of a bug
 			// in BGG XML2 api
-			final BGGGameList expansions = getCollection(url + "&subtype=boardgameexpansion");
-			if (expansions != null && expansions.getBoardGames() != null) {
-				games.getBoardGames().addAll(expansions.getBoardGames());
-			}
+			final List<BGGGame> expansions = getCollection(url + "&subtype=boardgameexpansion");
+			games.addAll(expansions);
 		}
 
 		if (includePreviouslyOwned) {
 			logger.debug("get owned for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
 			// owned and previouslyOwned are exclusives, we need to run a
 			// dedicated requests if we want both
-			final BGGGameList ownedGames = getCollection(username, includeExpansions, false);
-			if (ownedGames != null && ownedGames.getBoardGames() != null) {
-				games.getBoardGames().addAll(ownedGames.getBoardGames());
-			}
+			final List<BGGGame> ownedGames = getCollection(username, includeExpansions, false);
+			games.addAll(ownedGames);
 		}
 
 		return games;
 	}
 
-	private BGGGameList getCollection(String url) throws BGGException {
+	private List<BGGGame> getCollection(String url) throws BGGException {
 		logger.debug("get collection for with url={}", url);
 		try {
 			final URL bggUrl = new URL(url);
@@ -85,7 +84,11 @@ public class BGGClient {
 			final String xmlResult = IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8);
 			final Object result = getUnmarshaller(BGGGameList.class).unmarshal(new StringReader(xmlResult));
 
-			return (BGGGameList) result;
+			List<BGGGame> boardGames = ((BGGGameList) result).getBoardGames();
+			if (boardGames == null) {
+				boardGames = new ArrayList<>();
+			}
+			return boardGames;
 		} catch (JAXBException | IOException | InterruptedException e) {
 			throw new BGGException("error while retrieving collection from boardgamegeek with url=" + url, e);
 		}

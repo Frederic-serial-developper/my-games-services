@@ -10,6 +10,8 @@ public class BoardGame {
 
 	private BoardGameType type;
 
+	private BoardGameStatus status;
+
 	private Double rating;
 
 	private String image;
@@ -23,6 +25,14 @@ public class BoardGame {
 	private int maxPlayers;
 
 	private int playingTime;
+
+	public boolean isExpansion() {
+		return BoardGameType.EXPANSION.equals(this.type);
+	}
+
+	public boolean isPreviouslyOwned() {
+		return BoardGameStatus.PREVIOUSLY_OWNED.equals(this.status);
+	}
 
 	public int getPlayingTime() {
 		return this.playingTime;
@@ -110,6 +120,14 @@ public class BoardGame {
 
 	public void setType(BoardGameType type) {
 		this.type = type;
+	}
+
+	public BoardGameStatus getStatus() {
+		return this.status;
+	}
+
+	public void setStatus(BoardGameStatus status) {
+		this.status = status;
 	}
 
 }

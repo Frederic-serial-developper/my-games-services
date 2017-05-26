@@ -35,6 +35,9 @@ public class BGGGame {
 	@XmlElement(name = "stats")
 	private BGGGameStat stats;
 
+	@XmlElement(name = "status")
+	private BGGGameStatus status;
+
 	public BGGGameStat getStats() {
 		return this.stats;
 	}
@@ -73,6 +76,10 @@ public class BGGGame {
 
 	public String getOriginalname() {
 		return this.originalname;
+	}
+
+	public BGGGameStatus getStatus() {
+		return this.status;
 	}
 
 	@Override

@@ -4,18 +4,19 @@ import org.springframework.stereotype.Service;
 
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.BoardGameSource;
+import fdi.games.services.model.BoardGameStatus;
 import fdi.games.services.model.BoardGameType;
 import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameStat;
 
 @Service
 public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
-	private long id = 0;
+	private final long id = 0;
 
 	@Override
 	public BoardGame map(BGGGame source) {
 		final BoardGame game = new BoardGame();
-		game.setId(this.id++); // TODO calculate id
+		game.setId(source.getBggId());
 		game.setName(source.getName() == null ? source.getOriginalname() : source.getName());
 		game.setSource(BoardGameSource.BOARDGAMEGEEK);
 		game.setImage(source.getThumbnailUrl());
@@ -24,6 +25,12 @@ public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
 			game.setType(BoardGameType.GAME);
 		} else {
 			game.setType(BoardGameType.EXPANSION);
+		}
+
+		if (source.getStatus().getOwned() == 1) {
+			game.setStatus(BoardGameStatus.OWNED);
+		} else {
+			game.setStatus(BoardGameStatus.PREVIOUSLY_OWNED);
 		}
 
 		final BGGGameStat stats = source.getStats();
