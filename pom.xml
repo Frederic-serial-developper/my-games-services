@@ -134,6 +134,17 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- release -->
+			<plugin>			
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+            </plugin>
 		</plugins>
 	</build>
+
+	<scm>
+		<connection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</connection>
+		<developerConnection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</developerConnection>
+	</scm>
 </project>
