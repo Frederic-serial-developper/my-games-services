@@ -1,10 +1,9 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>fdi.games</groupId>
 	<artifactId>my-games-services</artifactId>
 	<packaging>war</packaging>
-	<version>0.0.2-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>games-services application</name>
 
 	<properties>
@@ -147,6 +146,6 @@
 	<scm>
 		<connection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</connection>
 		<developerConnection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</developerConnection>
-		<tag>HEAD</tag>
+		<tag>my-games-services-1.0.0</tag>
 	</scm>
 </project>
