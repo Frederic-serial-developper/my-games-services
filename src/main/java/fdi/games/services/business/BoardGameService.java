@@ -8,10 +8,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.google.common.cache.CacheBuilder;
@@ -36,19 +38,13 @@ public class BoardGameService {
 	@Inject
 	private BGGGameMapper mapper;
 
-	private final LoadingCache<String, Collection<BoardGame>> gamesCache = CacheBuilder.newBuilder().maximumSize(1000)
-			.expireAfterWrite(20, TimeUnit.MINUTES).build(new CacheLoader<String, Collection<BoardGame>>() {
-				@Override
-				public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
-					logger.info("fetch collection from boardgamegeek");
-					final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
-					logger.debug("found {} games for user {}", result.size(), username);
+	@Value("${my-games-services.cache.expirationInMinutes}")
+	private Integer cacheExpiration;
 
-					return result.stream().map(game -> BoardGameService.this.mapper.map(game))
-							.collect(Collectors.toList());
+	@Value("${my-games-services.cache.maxSize}")
+	private Integer cacheMaxSize;
 
-				}
-			});
+	private LoadingCache<String, Collection<BoardGame>> gamesCache;
 
 	public Collection<BoardGame> getCollection(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
@@ -114,5 +110,26 @@ public class BoardGameService {
 			total = total + boardGame.getPlaysCount();
 		}
 		return total;
+	}
+
+	@PostConstruct
+	private void initialize() {
+		logger.info("initialize cache: cacheMaxSize={} objects, cacheExpiration={} min", this.cacheMaxSize,
+				this.cacheExpiration);
+		this.gamesCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
+				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
+				.build(new CacheLoader<String, Collection<BoardGame>>() {
+					@Override
+					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
+						logger.info("fetch collection from boardgamegeek");
+						final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true,
+								true);
+						logger.debug("found {} games for user {}", result.size(), username);
+
+						return result.stream().map(game -> BoardGameService.this.mapper.map(game))
+								.collect(Collectors.toList());
+
+					}
+				});
 	}
 }

@@ -11,7 +11,6 @@ import fdi.games.services.ws.bgg.model.BGGGameStat;
 
 @Service
 public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
-	private final long id = 0;
 
 	@Override
 	public BoardGame map(BGGGame source) {

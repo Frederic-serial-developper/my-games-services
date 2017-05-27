@@ -16,6 +16,7 @@ import javax.xml.bind.Unmarshaller;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import fdi.games.services.ws.bgg.model.BGGGame;
@@ -26,11 +27,12 @@ public class BGGClient {
 
 	final static Logger logger = LoggerFactory.getLogger(BGGClient.class);
 
-	private static final String BGG_XML_API_BASE = "https://www.boardgamegeek.com/xmlapi2/";
+	@Value("${my-games-services.bgg.baseUrl}")
+	private String bggBaseUrl;
 
 	public List<BGGGame> getCollection(final String username, boolean includeExpansions, boolean includePreviouslyOwned)
 			throws BGGException {
-		String url = BGG_XML_API_BASE + "collection?";
+		String url = this.bggBaseUrl + "collection?";
 		url = url + "username=" + username;
 		url = url + "&stats=1";
 		if (includePreviouslyOwned) {
