@@ -84,8 +84,10 @@ public class BoardGameService {
 		for (final String vip : this.vips) {
 			logger.debug("refresh cache informations for {}", vip);
 			try {
+				final Collection<BoardGame> games = fetchGames(vip);
+				this.gamesCache.put(vip, games);
 				this.gamesCache.get(vip.trim());
-			} catch (final ExecutionException e) {
+			} catch (final ExecutionException | BGGException e) {
 				logger.error("error while refreshing cache informations for " + vip, e);
 			}
 		}
@@ -131,6 +133,14 @@ public class BoardGameService {
 		return total;
 	}
 
+	private Collection<BoardGame> fetchGames(String username) throws BGGException {
+		logger.info("fetch collection from boardgamegeek");
+		final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
+		logger.debug("found {} games for user {}", result.size(), username);
+
+		return result.stream().map(game -> BoardGameService.this.mapper.map(game)).collect(Collectors.toList());
+	}
+
 	@PostConstruct
 	private void initialize() {
 		logger.info("initialize cache: cacheMaxSize={} objects, cacheExpiration={} min", this.cacheMaxSize,
@@ -140,13 +150,7 @@ public class BoardGameService {
 				.build(new CacheLoader<String, Collection<BoardGame>>() {
 					@Override
 					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
-						logger.info("fetch collection from boardgamegeek");
-						final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true,
-								true);
-						logger.debug("found {} games for user {}", result.size(), username);
-
-						return result.stream().map(game -> BoardGameService.this.mapper.map(game))
-								.collect(Collectors.toList());
+						return fetchGames(username);
 
 					}
 				});
