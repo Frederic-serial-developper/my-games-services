@@ -14,6 +14,7 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.google.common.cache.CacheBuilder;
@@ -32,11 +33,17 @@ public class BoardGameService {
 
 	final static Logger logger = LoggerFactory.getLogger(BoardGameService.class);
 
+	private static final long _15_MIN = 900_000;
+	private static final long _30_SECONDS = 30_000;
+
 	@Inject
 	private BGGClient bggClient;
 
 	@Inject
 	private BGGGameMapper mapper;
+
+	@Value("${my-games-services.cache.vip}")
+	private String[] vips;
 
 	@Value("${my-games-services.cache.expirationInMinutes}")
 	private Integer cacheExpiration;
@@ -70,6 +77,18 @@ public class BoardGameService {
 
 		}
 		return filteredGames;
+	}
+
+	@Scheduled(initialDelay = _30_SECONDS, fixedDelay = _15_MIN)
+	private void refreshVips() {
+		for (final String vip : this.vips) {
+			logger.debug("refresh cache informations for {}", vip);
+			try {
+				this.gamesCache.get(vip.trim());
+			} catch (final ExecutionException e) {
+				logger.error("error while refreshing cache informations for " + vip, e);
+			}
+		}
 	}
 
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
@@ -117,7 +136,7 @@ public class BoardGameService {
 		logger.info("initialize cache: cacheMaxSize={} objects, cacheExpiration={} min", this.cacheMaxSize,
 				this.cacheExpiration);
 		this.gamesCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
-				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
+				.expireAfterAccess(this.cacheExpiration, TimeUnit.MINUTES)
 				.build(new CacheLoader<String, Collection<BoardGame>>() {
 					@Override
 					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
