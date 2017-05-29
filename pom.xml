@@ -3,7 +3,7 @@
 	<groupId>fdi.games</groupId>
 	<artifactId>my-games-services</artifactId>
 	<packaging>war</packaging>
-	<version>1.0.2</version>
+	<version>1.0.3-SNAPSHOT</version>
 	<name>games-services application</name>
 
 	<properties>
@@ -146,6 +146,6 @@
 	<scm>
 		<connection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</connection>
 		<developerConnection>scm:git:https://Frederic-serial-developper@github.com/Frederic-serial-developper/my-games-services.git</developerConnection>
-		<tag>my-games-services-1.0.2</tag>
+		<tag>HEAD</tag>
 	</scm>
 </project>
