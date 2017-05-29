@@ -82,12 +82,11 @@ public class BoardGameService {
 	@Scheduled(initialDelay = _30_SECONDS, fixedDelay = _15_MIN)
 	private void refreshVips() {
 		for (final String vip : this.vips) {
-			logger.debug("refresh cache informations for {}", vip);
+			logger.info("refresh cache informations for {}", vip);
 			try {
 				final Collection<BoardGame> games = fetchGames(vip);
 				this.gamesCache.put(vip, games);
-				this.gamesCache.get(vip.trim());
-			} catch (final ExecutionException | BGGException e) {
+			} catch (final BGGException e) {
 				logger.error("error while refreshing cache informations for " + vip, e);
 			}
 		}
@@ -107,7 +106,6 @@ public class BoardGameService {
 		for (final BoardGame boardGame : games) {
 			final RatingLevel ratingLevel = getRatingLevel(boardGame);
 			stats.incrementRatingLevel(ratingLevel);
-
 			stats.incrementYear(boardGame.getYear());
 		}
 
@@ -136,7 +134,7 @@ public class BoardGameService {
 	private Collection<BoardGame> fetchGames(String username) throws BGGException {
 		logger.info("fetch collection from boardgamegeek");
 		final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
-		logger.debug("found {} games for user {}", result.size(), username);
+		logger.info("found {} games for user {}", result.size(), username);
 
 		return result.stream().map(game -> BoardGameService.this.mapper.map(game)).collect(Collectors.toList());
 	}
@@ -146,12 +144,11 @@ public class BoardGameService {
 		logger.info("initialize cache: cacheMaxSize={} objects, cacheExpiration={} min", this.cacheMaxSize,
 				this.cacheExpiration);
 		this.gamesCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
-				.expireAfterAccess(this.cacheExpiration, TimeUnit.MINUTES)
+				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
 				.build(new CacheLoader<String, Collection<BoardGame>>() {
 					@Override
 					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
 						return fetchGames(username);
-
 					}
 				});
 	}

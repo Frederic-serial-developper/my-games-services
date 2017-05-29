@@ -46,14 +46,14 @@ public class BGGClient {
 		if (includeExpansions) {
 			logger.debug("get expansions for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
 			// execute a separated request to manage expansions because of a bug
-			// in BGG XML2 api
+			// in BGG XML2 API
 			final List<BGGGame> expansions = getCollection(url + "&subtype=boardgameexpansion");
 			games.addAll(expansions);
 		}
 
 		if (includePreviouslyOwned) {
-			logger.debug("get owned for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
-			// owned and previouslyOwned are exclusives, we need to run a
+			logger.debug("get previously owned for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
+			// owned and previouslyOwned are exclusive, we need to run a
 			// dedicated requests if we want both
 			final List<BGGGame> ownedGames = getCollection(username, includeExpansions, false);
 			games.addAll(ownedGames);
