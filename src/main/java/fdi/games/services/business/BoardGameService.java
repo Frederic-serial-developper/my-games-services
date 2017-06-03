@@ -27,6 +27,7 @@ import fdi.games.services.model.RatingLevel;
 import fdi.games.services.ws.bgg.BGGClient;
 import fdi.games.services.ws.bgg.BGGException;
 import fdi.games.services.ws.bgg.model.BGGGame;
+import fdi.games.services.ws.bgg.model.BGGGameDetail;
 
 @Service
 public class BoardGameService {
@@ -129,6 +130,14 @@ public class BoardGameService {
 			total = total + boardGame.getPlaysCount();
 		}
 		return total;
+	}
+
+	public BGGGameDetail getGameDetails(Long bggId) throws BoardGameServiceException {
+		try {
+			return this.bggClient.getDetails(bggId);
+		} catch (final BGGException e) {
+			throw new BoardGameServiceException("error while retrieving game details from BGG", e);
+		}
 	}
 
 	private Collection<BoardGame> fetchGames(String username) throws BGGException {

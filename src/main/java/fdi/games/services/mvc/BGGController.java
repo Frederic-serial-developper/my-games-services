@@ -18,6 +18,7 @@ import fdi.games.services.business.BoardGameService;
 import fdi.games.services.business.BoardGameServiceException;
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
+import fdi.games.services.ws.bgg.model.BGGGameDetail;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -60,5 +61,12 @@ public class BGGController {
 			logger.error("error while retrieving collection statistics for " + username + " : " + e.getMessage());
 			return new CollectionStatistics();
 		}
+	}
+
+	@GetMapping(path = "{bggId}", produces = "application/json; charset=UTF-8")
+	public BGGGameDetail getGameDetails(@PathVariable("bggId") Long bggId) throws BoardGameServiceException {
+		logger.info("retrieve game detais for game {}", bggId);
+		final BGGGameDetail gameDetails = this.service.getGameDetails(bggId);
+		return gameDetails;
 	}
 }
