@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.google.common.collect.Lists;
+
 import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameList;
 
@@ -35,35 +37,37 @@ public class BGGClient {
 		String url = this.bggBaseUrl + "collection?";
 		url = url + "username=" + username;
 		url = url + "&stats=1";
+
+		final List<BGGGame> myGames = Lists.newArrayList();
+
+		// get previous games
 		if (includePreviouslyOwned) {
-			url = url + "&prevowned=1";
-		} else {
-			url = url + "&own=1";
+			final List<BGGGame> previousGames = getCollection(
+					url + "&prevowned=1" + "&excludesubtype=boardgameexpansion");
+			logger.info("found {} previously owned games for {}", previousGames.size(), username);
+			myGames.addAll(previousGames);
+			if (includeExpansions) {
+				final List<BGGGame> previousExpansions = getCollection(
+						url + "&prevowned=1" + "&subtype=boardgameexpansion");
+				logger.info("found {} previously owned expansions for {}", previousExpansions.size(), username);
+				myGames.addAll(previousExpansions);
+			}
 		}
-
-		final List<BGGGame> games = getCollection(url + "&excludesubtype=boardgameexpansion");
-
+		// get owned games
+		final List<BGGGame> ownedGames = getCollection(url + "&own=1" + "&excludesubtype=boardgameexpansion");
+		logger.info("found {} owned games for {}", ownedGames.size(), username);
+		myGames.addAll(ownedGames);
 		if (includeExpansions) {
-			logger.debug("get expansions for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
-			// execute a separated request to manage expansions because of a bug
-			// in BGG XML2 API
-			final List<BGGGame> expansions = getCollection(url + "&subtype=boardgameexpansion");
-			games.addAll(expansions);
+			final List<BGGGame> ownedExpansions = getCollection(url + "&own=1" + "&subtype=boardgameexpansion");
+			logger.info("found {} owned expansions for {}", ownedExpansions.size(), username);
+			myGames.addAll(ownedExpansions);
 		}
 
-		if (includePreviouslyOwned) {
-			logger.debug("get previously owned for {}, includePreviouslyOwned={}", username, includePreviouslyOwned);
-			// owned and previouslyOwned are exclusive, we need to run a
-			// dedicated requests if we want both
-			final List<BGGGame> ownedGames = getCollection(username, includeExpansions, false);
-			games.addAll(ownedGames);
-		}
-
-		return games;
+		return myGames;
 	}
 
 	private List<BGGGame> getCollection(String url) throws BGGException {
-		logger.debug("get collection for with url={}", url);
+		logger.trace("get collection for with url={}", url);
 		try {
 			final URL bggUrl = new URL(url);
 			final URLConnection connection = bggUrl.openConnection();
