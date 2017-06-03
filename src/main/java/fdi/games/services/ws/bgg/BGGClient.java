@@ -2,7 +2,10 @@ package fdi.games.services.ws.bgg;
 
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.inject.Inject;
 import javax.xml.bind.JAXBContext;
@@ -31,6 +34,9 @@ public class BGGClient {
 
 	@Value("${my-games-services.bgg.baseUrl}")
 	private String bggBaseUrl;
+
+	@Value("${my-games-services.bgg.batchSize}")
+	private Integer bggBatchSize;
 
 	public List<BGGGame> getCollection(final String username, boolean includeExpansions, boolean includePreviouslyOwned)
 			throws BGGException {
@@ -82,16 +88,38 @@ public class BGGClient {
 		}
 	}
 
-	public BGGGameDetail getDetails(Long bggId) throws BGGException {
-		// https://www.boardgamegeek.com/xmlapi2/thing?type=boardgame&id=143519
-		final String url = this.bggBaseUrl + "thing?type=boardgame&id=" + bggId;
-		try {
-			final String xmlResult = this.connector.executeRequest(url);
-			final Object result = getUnmarshaller(BGGGameDetailsList.class).unmarshal(new StringReader(xmlResult));
-			return ((BGGGameDetailsList) result).getDetailsList().get(0);
-		} catch (final JAXBException e) {
-			throw new BGGException("error while parsing detail from boardgamegeek with url=" + url, e);
+	public Map<Long, BGGGameDetail> getDetails(Set<Long> ids) throws BGGException {
+		final Map<Long, BGGGameDetail> detailsById = new HashMap<>();
+
+		final List<List<Long>> partitionIds = Lists.partition(Lists.newArrayList(ids), this.bggBatchSize);
+		logger.debug("split ids with batch size={}", this.bggBatchSize);
+		int loop = 1;
+		for (final List<Long> subIds : partitionIds) {
+			String idParameter = "";
+			for (final Long id : subIds) {
+				if (!idParameter.isEmpty()) {
+					idParameter = idParameter + ",";
+				}
+				idParameter = idParameter + id;
+			}
+			final String url = this.bggBaseUrl + "thing?type=boardgame&id=" + idParameter;
+			try {
+				logger.debug("retrieve details for {} ids - {}/{}", subIds.size(), loop, partitionIds.size());
+				final String xmlResult = this.connector.executeRequest(url);
+				final BGGGameDetailsList detailsLists = (BGGGameDetailsList) getUnmarshaller(BGGGameDetailsList.class)
+						.unmarshal(new StringReader(xmlResult));
+				final List<BGGGameDetail> details = detailsLists.getDetailsList();
+				for (final BGGGameDetail bggGameDetail : details) {
+					detailsById.put(bggGameDetail.getBggId(), bggGameDetail);
+
+				}
+			} catch (final JAXBException e) {
+				throw new BGGException("error while parsing detail from boardgamegeek with url=" + url, e);
+			}
+			loop++;
 		}
+		return detailsById;
+
 	}
 
 	private Unmarshaller getUnmarshaller(final Class<?> payloadClass) {

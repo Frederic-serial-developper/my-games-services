@@ -38,6 +38,8 @@ public class BGGGame {
 	@XmlElement(name = "status")
 	private BGGGameStatus status;
 
+	private BGGGameDetail details;
+
 	public BGGGameStat getStats() {
 		return this.stats;
 	}
@@ -82,9 +84,12 @@ public class BGGGame {
 		return this.status;
 	}
 
-	@Override
-	public String toString() {
-		return "BoardGame [bggId=" + this.bggId + ", name=" + this.name + "]";
+	public BGGGameDetail getDetails() {
+		return this.details;
+	}
+
+	public void setDetails(BGGGameDetail details) {
+		this.details = details;
 	}
 
 }

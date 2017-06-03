@@ -1,10 +1,15 @@
 package fdi.games.services.model;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class BoardGame {
 
 	private Long id;
 
 	private String name;
+
+	private String description;
 
 	private BoardGameSource source;
 
@@ -25,6 +30,31 @@ public class BoardGame {
 	private int maxPlayers;
 
 	private int playingTime;
+
+	private final Set<String> categories;
+
+	private final Set<String> mechanisms;
+
+	private final Set<String> expansions;
+
+	public BoardGame() {
+		super();
+		this.categories = new HashSet<>();
+		this.mechanisms = new HashSet<>();
+		this.expansions = new HashSet<>();
+	}
+
+	public void addCategory(String category) {
+		this.categories.add(category);
+	}
+
+	public void addMechanism(String mechanism) {
+		this.mechanisms.add(mechanism);
+	}
+
+	public void addExpansion(String expansion) {
+		this.expansions.add(expansion);
+	}
 
 	public boolean isExpansion() {
 		return BoardGameType.EXPANSION.equals(this.type);
@@ -128,6 +158,22 @@ public class BoardGame {
 
 	public void setStatus(BoardGameStatus status) {
 		this.status = status;
+	}
+
+	public Set<String> getCategories() {
+		return this.categories;
+	}
+
+	public Set<String> getMechanisms() {
+		return this.mechanisms;
+	}
+
+	public String getDescription() {
+		return this.description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
 	}
 
 }

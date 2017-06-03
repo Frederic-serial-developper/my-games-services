@@ -2,6 +2,7 @@ package fdi.games.services.mvc;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
 import javax.inject.Inject;
 
@@ -64,9 +65,9 @@ public class BGGController {
 	}
 
 	@GetMapping(path = "{bggId}", produces = "application/json; charset=UTF-8")
-	public BGGGameDetail getGameDetails(@PathVariable("bggId") Long bggId) throws BoardGameServiceException {
+	public Map<Long, BGGGameDetail> getGameDetails(@PathVariable("bggId") Long bggId) throws BoardGameServiceException {
 		logger.info("retrieve game detais for game {}", bggId);
-		final BGGGameDetail gameDetails = this.service.getGameDetails(bggId);
+		final Map<Long, BGGGameDetail> gameDetails = this.service.getGameDetails(bggId);
 		return gameDetails;
 	}
 }

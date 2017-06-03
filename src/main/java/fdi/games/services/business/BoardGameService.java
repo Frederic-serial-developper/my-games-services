@@ -3,6 +3,7 @@ package fdi.games.services.business;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Sets;
 
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.CollectionStatistics;
@@ -35,7 +37,7 @@ public class BoardGameService {
 	final static Logger logger = LoggerFactory.getLogger(BoardGameService.class);
 
 	private static final long _15_MIN = 900_000;
-	private static final long _30_SECONDS = 30_000;
+	private static final long _10_SECONDS = 10_000;
 
 	@Inject
 	private BGGClient bggClient;
@@ -80,7 +82,7 @@ public class BoardGameService {
 		return filteredGames;
 	}
 
-	@Scheduled(initialDelay = _30_SECONDS, fixedDelay = _15_MIN)
+	@Scheduled(initialDelay = _10_SECONDS, fixedDelay = _15_MIN)
 	private void refreshVips() {
 		for (final String vip : this.vips) {
 			logger.info("refresh cache informations for {}", vip);
@@ -132,18 +134,26 @@ public class BoardGameService {
 		return total;
 	}
 
-	public BGGGameDetail getGameDetails(Long bggId) throws BoardGameServiceException {
+	public Map<Long, BGGGameDetail> getGameDetails(Long bggId) throws BoardGameServiceException {
 		try {
-			return this.bggClient.getDetails(bggId);
+			return this.bggClient.getDetails(Sets.newHashSet(bggId));
 		} catch (final BGGException e) {
 			throw new BoardGameServiceException("error while retrieving game details from BGG", e);
 		}
 	}
 
 	private Collection<BoardGame> fetchGames(String username) throws BGGException {
-		logger.info("fetch collection from boardgamegeek");
+		logger.info("fetch collection from boardgamegeek for {}", username);
 		final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
 		logger.info("found {} games for user {}", result.size(), username);
+
+		logger.info("fetch collection details from boardgamegeek for {}", username);
+		final Set<Long> ids = result.stream().map(game -> game.getBggId()).collect(Collectors.toSet());
+		final Map<Long, BGGGameDetail> detailsById = BoardGameService.this.bggClient.getDetails(ids);
+		for (final BGGGame bggGame : result) {
+			bggGame.setDetails(detailsById.get(bggGame.getBggId()));
+		}
+		logger.info("found {} games details for user {}", detailsById.size(), username);
 
 		return result.stream().map(game -> BoardGameService.this.mapper.map(game)).collect(Collectors.toList());
 	}
@@ -157,7 +167,11 @@ public class BoardGameService {
 				.build(new CacheLoader<String, Collection<BoardGame>>() {
 					@Override
 					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
-						return fetchGames(username);
+						final long start = System.currentTimeMillis();
+						final Collection<BoardGame> games = fetchGames(username);
+						final long end = System.currentTimeMillis();
+						logger.info("{} games fetched for {} in {} msec", games.size(), username, end - start);
+						return games;
 					}
 				});
 	}

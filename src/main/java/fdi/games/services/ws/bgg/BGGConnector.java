@@ -27,12 +27,12 @@ public class BGGConnector {
 
 				do {
 					if (responseCode != 0) {
-						logger.debug("wait response status is 200 for {}", urlToExecute);
+						logger.trace("wait response status is 200 for {}", urlToExecute);
 						Thread.sleep(5000);
 					}
 					httpConnection = (HttpURLConnection) url.openConnection();
 					responseCode = httpConnection.getResponseCode();
-					logger.debug("Response status for {} : {}", urlToExecute, responseCode);
+					logger.trace("Response status for {} : {}", urlToExecute, responseCode);
 				} while (responseCode == 202);
 			}
 
