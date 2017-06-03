@@ -1,5 +1,6 @@
 package fdi.games.services.business;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Sets;
 
 import fdi.games.services.model.BoardGame;
+import fdi.games.services.model.BoardGamesCollection;
 import fdi.games.services.model.CollectionStatistics;
 import fdi.games.services.model.RatingLevel;
 import fdi.games.services.ws.bgg.BGGClient;
@@ -54,14 +56,14 @@ public class BoardGameService {
 	@Value("${my-games-services.cache.maxSize}")
 	private Integer cacheMaxSize;
 
-	private LoadingCache<String, Collection<BoardGame>> gamesCache;
+	private LoadingCache<String, BoardGamesCollection> gamesCache;
 
 	public Collection<BoardGame> getCollection(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
 				includeExpansions, includePreviouslyOwned);
 		try {
-			final Collection<BoardGame> games = this.gamesCache.get(username);
+			final Collection<BoardGame> games = this.gamesCache.get(username).getGames();
 			return filter(games, includeExpansions, includePreviouslyOwned);
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("Error while fetching collection", e);
@@ -88,7 +90,7 @@ public class BoardGameService {
 			logger.info("refresh cache informations for {}", vip);
 			try {
 				final Collection<BoardGame> games = fetchGames(vip);
-				this.gamesCache.put(vip, games);
+				this.gamesCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
 			} catch (final BGGException e) {
 				logger.error("error while refreshing cache informations for " + vip, e);
 			}
@@ -164,14 +166,14 @@ public class BoardGameService {
 				this.cacheExpiration);
 		this.gamesCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
 				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
-				.build(new CacheLoader<String, Collection<BoardGame>>() {
+				.build(new CacheLoader<String, BoardGamesCollection>() {
 					@Override
-					public Collection<BoardGame> load(String username) throws BoardGameServiceException, BGGException {
+					public BoardGamesCollection load(String username) throws BoardGameServiceException, BGGException {
 						final long start = System.currentTimeMillis();
 						final Collection<BoardGame> games = fetchGames(username);
 						final long end = System.currentTimeMillis();
 						logger.info("{} games fetched for {} in {} msec", games.size(), username, end - start);
-						return games;
+						return new BoardGamesCollection(LocalDateTime.now(), games);
 					}
 				});
 	}
