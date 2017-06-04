@@ -104,7 +104,7 @@ public class BGGClient {
 			}
 			final String url = this.bggBaseUrl + "thing?type=boardgame&id=" + idParameter;
 			try {
-				logger.debug("retrieve details for {} ids - {}/{}", subIds.size(), loop, partitionIds.size());
+				logger.info("retrieve details for {} ids - {}/{}", subIds.size(), loop, partitionIds.size());
 				final String xmlResult = this.connector.executeRequest(url);
 				final BGGGameDetailsList detailsLists = (BGGGameDetailsList) getUnmarshaller(BGGGameDetailsList.class)
 						.unmarshal(new StringReader(xmlResult));
