@@ -1,5 +1,6 @@
 package fdi.games.services.mvc;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -60,7 +61,7 @@ public class BGGController {
 			return statistics;
 		} catch (final BoardGameServiceException e) {
 			logger.error("error while retrieving collection statistics for " + username + " : " + e.getMessage());
-			return new CollectionStatistics();
+			return new CollectionStatistics(LocalDateTime.now());
 		}
 	}
 

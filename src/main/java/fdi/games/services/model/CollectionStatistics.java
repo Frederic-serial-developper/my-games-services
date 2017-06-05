@@ -1,9 +1,17 @@
 package fdi.games.services.model;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+import fdi.games.services.LocalDateTimeSerializer;
+
 public class CollectionStatistics {
+
+	@JsonSerialize(using = LocalDateTimeSerializer.class)
+	private final LocalDateTime lasUpdate;
 
 	private Long totalSize;
 
@@ -12,6 +20,11 @@ public class CollectionStatistics {
 	private final Map<RatingLevel, Integer> gamesByRatingLevel = new HashMap<>();
 
 	private final Map<Integer, Integer> gamesByYear = new HashMap<>();
+
+	public CollectionStatistics(LocalDateTime lasUpdate) {
+		super();
+		this.lasUpdate = lasUpdate;
+	}
 
 	public Map<Integer, Integer> getGamesByYear() {
 		return this.gamesByYear;
@@ -53,6 +66,10 @@ public class CollectionStatistics {
 
 	public Map<RatingLevel, Integer> getGamesByRatingLevel() {
 		return this.gamesByRatingLevel;
+	}
+
+	public LocalDateTime getLasUpdate() {
+		return this.lasUpdate;
 	}
 
 }

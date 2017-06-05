@@ -99,22 +99,28 @@ public class BoardGameService {
 
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
-		final CollectionStatistics stats = new CollectionStatistics();
 
-		final Collection<BoardGame> games = getCollection(username, includeExpansions, includePreviouslyOwned);
+		try {
+			final BoardGamesCollection boardGamesCollection = this.gamesCache.get(username);
+			final CollectionStatistics stats = new CollectionStatistics(boardGamesCollection.getLasUpdate());
 
-		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
+			final Collection<BoardGame> games = filter(boardGamesCollection.getGames(), includeExpansions,
+					includePreviouslyOwned);
 
-		stats.setTotalSize(new Long(games.size()));
-		stats.setTotalPlays(countPlays(games));
+			logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 
-		for (final BoardGame boardGame : games) {
-			final RatingLevel ratingLevel = getRatingLevel(boardGame);
-			stats.incrementRatingLevel(ratingLevel);
-			stats.incrementYear(boardGame.getYear());
+			stats.setTotalSize(new Long(games.size()));
+			stats.setTotalPlays(countPlays(games));
+
+			for (final BoardGame boardGame : games) {
+				final RatingLevel ratingLevel = getRatingLevel(boardGame);
+				stats.incrementRatingLevel(ratingLevel);
+				stats.incrementYear(boardGame.getYear());
+			}
+			return stats;
+		} catch (final ExecutionException e) {
+			throw new BoardGameServiceException("error while getting statisctics for " + username, e);
 		}
-
-		return stats;
 	}
 
 	private RatingLevel getRatingLevel(BoardGame game) {
