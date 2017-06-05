@@ -1,5 +1,6 @@
 package fdi.games.services.business;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
@@ -22,16 +23,20 @@ import org.springframework.stereotype.Service;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.BoardGamesCollection;
 import fdi.games.services.model.CollectionStatistics;
+import fdi.games.services.model.Play;
 import fdi.games.services.model.RatingLevel;
 import fdi.games.services.ws.bgg.BGGClient;
 import fdi.games.services.ws.bgg.BGGException;
 import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
+import fdi.games.services.ws.bgg.model.BGGPlay;
 
 @Service
 public class BoardGameService {
@@ -56,7 +61,12 @@ public class BoardGameService {
 	@Value("${my-games-services.cache.maxSize}")
 	private Integer cacheMaxSize;
 
+	@Value("${my-games-services.bgg.delay}")
+	private Integer bggDelay;
+
 	private LoadingCache<String, BoardGamesCollection> gamesCache;
+
+	private LoadingCache<String, Collection<Play>> playsCache;
 
 	public Collection<BoardGame> getCollection(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
@@ -85,16 +95,30 @@ public class BoardGameService {
 	}
 
 	@Scheduled(initialDelay = _10_SECONDS, fixedDelay = _15_MIN)
-	private void refreshVips() {
+	private void refreshVips() throws InterruptedException {
 		for (final String vip : this.vips) {
 			logger.info("refresh cache informations for {}", vip);
 			try {
+				delay();
 				final Collection<BoardGame> games = fetchGames(vip);
 				this.gamesCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
+				delay();
+				try {
+					final Multimap<LocalDate, Play> plays = fetchPlays(vip);
+					this.playsCache.put(vip, plays.values());
+				} catch (final BoardGameServiceException e) {
+					logger.error("cannot fetch plays for {}", vip, e);
+				}
+
 			} catch (final BGGException e) {
 				logger.error("error while refreshing cache informations for " + vip, e);
 			}
 		}
+	}
+
+	private void delay() throws InterruptedException {
+		logger.debug("wait {} seconds", this.bggDelay);
+		TimeUnit.SECONDS.sleep(this.bggDelay);
 	}
 
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
@@ -117,6 +141,14 @@ public class BoardGameService {
 				stats.incrementRatingLevel(ratingLevel);
 				stats.incrementYear(boardGame.getYear());
 			}
+
+			final Collection<Play> plays = getPlays(username);
+			for (final Play play : plays) {
+				final Integer year = play.getDate().getYear();
+				final Integer count = play.getCount();
+				stats.incrementPlay(year, count);
+			}
+
 			return stats;
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("error while getting statisctics for " + username, e);
@@ -140,6 +172,31 @@ public class BoardGameService {
 			total = total + boardGame.getPlaysCount();
 		}
 		return total;
+	}
+
+	public Collection<Play> getPlays(String username) throws BoardGameServiceException {
+		try {
+			return this.playsCache.get(username);
+		} catch (final ExecutionException e) {
+			throw new BoardGameServiceException("error while retrieving plays for " + username, e);
+		}
+	}
+
+	private Multimap<LocalDate, Play> fetchPlays(String username) throws BoardGameServiceException {
+		try {
+			logger.info("fetch plays from boardgamegeek for {}", username);
+			final List<BGGPlay> plays = this.bggClient.getPlays(username);
+			logger.info("found {} plays for user {}", plays.size(), username);
+
+			final Multimap<LocalDate, Play> playsByDate = ArrayListMultimap.create();
+			for (final BGGPlay bggPlay : plays) {
+				final LocalDate date = LocalDate.parse(bggPlay.getDate());
+				playsByDate.put(date, new Play(date, bggPlay.getItem().getName(), bggPlay.getQuantity()));
+			}
+			return playsByDate;
+		} catch (final BGGException e) {
+			throw new BoardGameServiceException("error while retrieving plays from BGG", e);
+		}
 	}
 
 	public Map<Long, BGGGameDetail> getGameDetails(Long bggId) throws BoardGameServiceException {
@@ -180,6 +237,19 @@ public class BoardGameService {
 						final long end = System.currentTimeMillis();
 						logger.info("{} games fetched for {} in {} msec", games.size(), username, end - start);
 						return new BoardGamesCollection(LocalDateTime.now(), games);
+					}
+				});
+
+		this.playsCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
+				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
+				.build(new CacheLoader<String, Collection<Play>>() {
+					@Override
+					public Collection<Play> load(String username) throws BoardGameServiceException, BGGException {
+						final long start = System.currentTimeMillis();
+						final Multimap<LocalDate, Play> playsByDate = fetchPlays(username);
+						final long end = System.currentTimeMillis();
+						logger.info("{} games fetched for {} in {} msec", playsByDate.size(), username, end - start);
+						return playsByDate.values();
 					}
 				});
 	}

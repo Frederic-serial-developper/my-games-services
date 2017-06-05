@@ -21,6 +21,8 @@ public class CollectionStatistics {
 
 	private final Map<Integer, Integer> gamesByYear = new HashMap<>();
 
+	private final Map<Integer, Integer> playsByYear = new HashMap<>();
+
 	public CollectionStatistics(LocalDateTime lasUpdate) {
 		super();
 		this.lasUpdate = lasUpdate;
@@ -28,6 +30,10 @@ public class CollectionStatistics {
 
 	public Map<Integer, Integer> getGamesByYear() {
 		return this.gamesByYear;
+	}
+
+	public Map<Integer, Integer> getPlaysByYear() {
+		return this.playsByYear;
 	}
 
 	public Long getTotalPlays() {
@@ -62,6 +68,15 @@ public class CollectionStatistics {
 		}
 		count++;
 		this.gamesByYear.put(year, count);
+	}
+
+	public void incrementPlay(Integer year, int toAdd) {
+		Integer count = this.playsByYear.get(year);
+		if (count == null) {
+			count = new Integer(0);
+		}
+		count = count + toAdd;
+		this.playsByYear.put(year, count);
 	}
 
 	public Map<RatingLevel, Integer> getGamesByRatingLevel() {

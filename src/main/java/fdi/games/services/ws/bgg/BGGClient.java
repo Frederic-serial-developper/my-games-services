@@ -23,6 +23,8 @@ import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
 import fdi.games.services.ws.bgg.model.BGGGameDetailsList;
 import fdi.games.services.ws.bgg.model.BGGGameList;
+import fdi.games.services.ws.bgg.model.BGGPlay;
+import fdi.games.services.ws.bgg.model.BGGPlaysList;
 
 @Service
 public class BGGClient {
@@ -70,6 +72,32 @@ public class BGGClient {
 		}
 
 		return myGames;
+	}
+
+	public List<BGGPlay> getPlays(String username) throws BGGException {
+		logger.info("get plays for {}", username);
+		final String url = this.bggBaseUrl + "plays?username=" + username + "&page=";
+		try {
+			final List<BGGPlay> plays = new ArrayList<>();
+			boolean shouldContinue = true;
+			int page = 1;
+			while (shouldContinue) {
+				final String urlToExecute = url + page;
+				logger.info("get plays for {}, page={}, url={}", username, page, urlToExecute);
+				final String xmlResult = this.connector.executeRequest(urlToExecute);
+				final BGGPlaysList result = (BGGPlaysList) getUnmarshaller(BGGPlaysList.class)
+						.unmarshal(new StringReader(xmlResult));
+				final List<BGGPlay> playsFromBgg = result.getPlays();
+				shouldContinue = playsFromBgg != null && !playsFromBgg.isEmpty();
+				if (shouldContinue) {
+					plays.addAll(playsFromBgg);
+					page++;
+				}
+			}
+			return plays;
+		} catch (final BGGException | JAXBException e) {
+			throw new BGGException("error while getting plays from boardgamegeek with url=" + url, e);
+		}
 	}
 
 	private List<BGGGame> getCollection(String url) throws BGGException {
