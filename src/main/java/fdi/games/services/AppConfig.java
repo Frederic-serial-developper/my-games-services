@@ -11,7 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 @EnableWebMvc
 @EnableScheduling
 @ComponentScan(basePackages = { "fdi.games.services" })
-@PropertySource(value = "classpath:my-games-services-local.properties", ignoreResourceNotFound = true)
 @PropertySource("classpath:my-games-services.properties")
+@PropertySource(value = "classpath:my-games-services-local.properties", ignoreResourceNotFound = true)
 public class AppConfig extends WebMvcConfigurerAdapter {
 }
