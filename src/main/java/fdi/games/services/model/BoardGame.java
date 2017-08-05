@@ -16,8 +16,8 @@ public class BoardGame {
 		return BoardGameStatus.PREVIOUSLY_OWNED.equals(this.status);
 	}
 
-	public void incrementPlayCount() {
-		this.playsCount++;
+	public void incrementPlayCount(Integer count) {
+		this.playsCount = this.playsCount + count;
 	}
 
 	public Long getPlaysCount() {

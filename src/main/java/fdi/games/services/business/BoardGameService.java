@@ -231,7 +231,7 @@ public class BoardGameService {
 					game.setStatus(boardGameStatus == null ? BoardGameStatus.OTHER : boardGameStatus);
 					game.setName(play.getGameName());
 				}
-				game.incrementPlayCount();
+				game.incrementPlayCount(play.getCount());
 				playDataByGameId.put(bggId, game);
 			}
 
