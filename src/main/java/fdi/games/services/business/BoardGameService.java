@@ -14,12 +14,14 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -28,6 +30,8 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import fdi.games.services.model.BoardGame;
+import fdi.games.services.model.BoardGameData;
+import fdi.games.services.model.BoardGameWithData;
 import fdi.games.services.model.BoardGamesCollection;
 import fdi.games.services.model.CollectionStatistics;
 import fdi.games.services.model.Play;
@@ -50,7 +54,10 @@ public class BoardGameService {
 	private BGGClient bggClient;
 
 	@Inject
-	private BGGGameMapper mapper;
+	private BGGGameMapper bggGameMapper;
+
+	@Inject
+	private BGGGameDetailMapper bggGameDetailMapper;
 
 	@Value("${my-games-services.cache.vip}")
 	private String[] vips;
@@ -58,33 +65,53 @@ public class BoardGameService {
 	@Value("${my-games-services.cache.expirationInMinutes}")
 	private Integer cacheExpiration;
 
-	@Value("${my-games-services.cache.maxSize}")
-	private Integer cacheMaxSize;
+	@Value("${my-games-services.cache.collection.maxSize}")
+	private Integer cacheCollectionMaxSize;
+
+	@Value("${my-games-services.cache.data.maxSize}")
+	private Integer cacheDataMaxSize;
+
+	@Value("${my-games-services.cache.plays.maxSize}")
+	private Integer cachePlaysMaxSize;
 
 	@Value("${my-games-services.bgg.delay}")
 	private Integer bggDelay;
 
-	private LoadingCache<String, BoardGamesCollection> gamesCache;
+	private Cache<String, BoardGamesCollection> collectionsCache;
+
+	private Cache<Long, BoardGameData> gamesDataCache;
 
 	private LoadingCache<String, Collection<Play>> playsCache;
 
-	public Collection<BoardGame> getCollection(String username, boolean includeExpansions,
+	public Collection<BoardGameWithData> getCollection(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
 				includeExpansions, includePreviouslyOwned);
-		try {
-			final Collection<BoardGame> games = this.gamesCache.get(username).getGames();
-			return filter(games, includeExpansions, includePreviouslyOwned);
-		} catch (final ExecutionException e) {
-			throw new BoardGameServiceException("Error while fetching collection", e);
-		}
+		final Collection<BoardGame> games = this.collectionsCache.getIfPresent(username).getGames();
+		final Collection<BoardGame> filteredGames = filter(games, includeExpansions, includePreviouslyOwned);
+
+		final Collection<BoardGameWithData> gamesWithData = filteredGames.stream().map(game -> getGameWithData(game))
+				.collect(Collectors.toSet());
+
+		return gamesWithData;
+	}
+
+	private BoardGameWithData getGameWithData(BoardGame game) {
+		final BoardGameWithData boardGameWithData = new BoardGameWithData();
+		boardGameWithData.setId(game.getId());
+		boardGameWithData.setName(game.getName());
+		boardGameWithData.setStatus(game.getStatus());
+		boardGameWithData.setPlaysCount(game.getPlaysCount());
+		boardGameWithData.setData(this.gamesDataCache.getIfPresent(game.getId()));
+		return boardGameWithData;
 	}
 
 	private Collection<BoardGame> filter(Collection<BoardGame> games, boolean includeExpansions,
 			boolean includePreviouslyOwned) {
 		final Set<BoardGame> filteredGames = new HashSet<>();
 		for (final BoardGame game : games) {
-			final boolean shouldFilter = !includeExpansions && game.isExpansion()
+			final BoardGameData gameData = this.gamesDataCache.getIfPresent(game.getId());
+			final boolean shouldFilter = !includeExpansions && gameData.isExpansion()
 					|| !includePreviouslyOwned && game.isPreviouslyOwned();
 			if (!shouldFilter) {
 				filteredGames.add(game);
@@ -101,7 +128,7 @@ public class BoardGameService {
 			try {
 				delay();
 				final Collection<BoardGame> games = fetchGames(vip);
-				this.gamesCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
+				this.collectionsCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
 				delay();
 				try {
 					final Multimap<LocalDate, Play> plays = fetchPlays(vip);
@@ -123,39 +150,37 @@ public class BoardGameService {
 
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
+		final BoardGamesCollection boardGamesCollection = this.collectionsCache.getIfPresent(username);
+		final CollectionStatistics stats = new CollectionStatistics(boardGamesCollection.getLasUpdate());
 
-		try {
-			final BoardGamesCollection boardGamesCollection = this.gamesCache.get(username);
-			final CollectionStatistics stats = new CollectionStatistics(boardGamesCollection.getLasUpdate());
+		final Collection<BoardGame> games = filter(boardGamesCollection.getGames(), includeExpansions,
+				includePreviouslyOwned);
 
-			final Collection<BoardGame> games = filter(boardGamesCollection.getGames(), includeExpansions,
-					includePreviouslyOwned);
+		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 
-			logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
+		stats.setTotalSize(new Long(games.size()));
+		stats.setTotalPlays(countPlays(games));
 
-			stats.setTotalSize(new Long(games.size()));
-			stats.setTotalPlays(countPlays(games));
-
-			for (final BoardGame boardGame : games) {
-				final RatingLevel ratingLevel = getRatingLevel(boardGame);
+		for (final BoardGame boardGame : games) {
+			final BoardGameData gameData = this.gamesDataCache.getIfPresent(boardGame.getId());
+			if (gameData != null) {
+				final RatingLevel ratingLevel = getRatingLevel(gameData);
 				stats.incrementRatingLevel(ratingLevel);
-				stats.incrementYear(boardGame.getYear());
+				stats.incrementYear(gameData.getYear());
 			}
-
-			final Collection<Play> plays = getPlays(username);
-			for (final Play play : plays) {
-				final Integer year = play.getDate().getYear();
-				final Integer count = play.getCount();
-				stats.incrementPlay(year, count);
-			}
-
-			return stats;
-		} catch (final ExecutionException e) {
-			throw new BoardGameServiceException("error while getting statisctics for " + username, e);
 		}
+
+		final Collection<Play> plays = getPlays(username);
+		for (final Play play : plays) {
+			final Integer year = play.getDate().getYear();
+			final Integer count = play.getCount();
+			stats.incrementPlay(year, count);
+		}
+
+		return stats;
 	}
 
-	private RatingLevel getRatingLevel(BoardGame game) {
+	private RatingLevel getRatingLevel(BoardGameData game) {
 		final RatingLevel[] levelsAvailable = RatingLevel.values();
 		final Double rating = game.getRating();
 		for (final RatingLevel ratingLevel : levelsAvailable) {
@@ -210,37 +235,45 @@ public class BoardGameService {
 	private Collection<BoardGame> fetchGames(String username) throws BGGException {
 		logger.info("fetch collection from boardgamegeek for {}", username);
 		final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
+		final Set<BoardGame> games = result.stream().map(game -> this.bggGameMapper.map(game))
+				.collect(Collectors.toSet());
+		this.collectionsCache.put(username, new BoardGamesCollection(LocalDateTime.now(), games));
 		logger.info("found {} games for user {}", result.size(), username);
 
-		logger.info("fetch collection details from boardgamegeek for {}", username);
+		logger.info("fetch games data from boardgamegeek for {}", username);
 		final Set<Long> ids = result.stream().map(game -> game.getBggId()).collect(Collectors.toSet());
-		final Map<Long, BGGGameDetail> detailsById = BoardGameService.this.bggClient.getDetails(ids);
-		for (final BGGGame bggGame : result) {
-			bggGame.setDetails(detailsById.get(bggGame.getBggId()));
+		final Set<Long> idsToFetch = Sets.newHashSet();
+		for (final Long id : ids) {
+			if (this.gamesDataCache.getIfPresent(id) == null) {
+				idsToFetch.add(id);
+			}
 		}
+		final Map<Long, BGGGameDetail> detailsById = BoardGameService.this.bggClient.getDetails(idsToFetch);
+		for (final BGGGameDetail detail : detailsById.values()) {
+			this.gamesDataCache.put(detail.getBggId(), this.bggGameDetailMapper.map(detail));
+		}
+		final Collection<Long> missingDetails = CollectionUtils.subtract(idsToFetch, detailsById.keySet());
+		if (CollectionUtils.isNotEmpty(missingDetails)) {
+			logger.warn("cannot find details for {} : games {}", missingDetails.size(), missingDetails);
+		}
+
 		logger.info("found {} games details for user {}", detailsById.size(), username);
 
-		return result.stream().map(game -> BoardGameService.this.mapper.map(game)).collect(Collectors.toList());
+		return result.stream().map(game -> BoardGameService.this.bggGameMapper.map(game)).collect(Collectors.toList());
 	}
 
 	@PostConstruct
 	private void initialize() {
-		logger.info("initialize cache: cacheMaxSize={} objects, cacheExpiration={} min", this.cacheMaxSize,
-				this.cacheExpiration);
-		this.gamesCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
-				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
-				.build(new CacheLoader<String, BoardGamesCollection>() {
-					@Override
-					public BoardGamesCollection load(String username) throws BoardGameServiceException, BGGException {
-						final long start = System.currentTimeMillis();
-						final Collection<BoardGame> games = fetchGames(username);
-						final long end = System.currentTimeMillis();
-						logger.info("{} games fetched for {} in {} msec", games.size(), username, end - start);
-						return new BoardGamesCollection(LocalDateTime.now(), games);
-					}
-				});
+		logger.info(
+				"initialize cache: cacheDataMaxSize={} objects, cacheCollectionMaxSize={} objects, cachePlaysMaxSize={} objects, cacheExpiration={} min",
+				this.cacheDataMaxSize, this.cacheCollectionMaxSize, this.cachePlaysMaxSize, this.cacheExpiration);
+		this.gamesDataCache = CacheBuilder.newBuilder().maximumSize(this.cacheDataMaxSize)
+				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES).build();
 
-		this.playsCache = CacheBuilder.newBuilder().maximumSize(this.cacheMaxSize)
+		this.collectionsCache = CacheBuilder.newBuilder().maximumSize(this.cacheCollectionMaxSize)
+				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES).build();
+
+		this.playsCache = CacheBuilder.newBuilder().maximumSize(this.cachePlaysMaxSize)
 				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
 				.build(new CacheLoader<String, Collection<Play>>() {
 					@Override

@@ -32,17 +32,8 @@ public class BGGGame {
 	@XmlElement(name = "numplays")
 	private Long plays;
 
-	@XmlElement(name = "stats")
-	private BGGGameStat stats;
-
 	@XmlElement(name = "status")
 	private BGGGameStatus status;
-
-	private BGGGameDetail details;
-
-	public BGGGameStat getStats() {
-		return this.stats;
-	}
 
 	public long getPlays() {
 		return this.plays;
@@ -82,14 +73,6 @@ public class BGGGame {
 
 	public BGGGameStatus getStatus() {
 		return this.status;
-	}
-
-	public BGGGameDetail getDetails() {
-		return this.details;
-	}
-
-	public void setDetails(BGGGameDetail details) {
-		this.details = details;
 	}
 
 }
