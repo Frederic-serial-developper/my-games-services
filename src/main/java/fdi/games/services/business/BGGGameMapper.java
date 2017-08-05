@@ -18,6 +18,7 @@ public class BGGGameMapper implements Mapper<BGGGame, BoardGame> {
 		final BoardGame game = new BoardGame();
 		game.setId(source.getBggId());
 		game.setName(source.getName() == null ? source.getOriginalname() : source.getName());
+		game.setImage(source.getThumbnailUrl());
 
 		if (source.getStatus().getOwned() == 1) {
 			game.setStatus(BoardGameStatus.OWNED);

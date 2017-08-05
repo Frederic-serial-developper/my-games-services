@@ -22,7 +22,7 @@ public class BGGGameDetailMapper implements Mapper<BGGGameDetail, BoardGameData>
 		final BoardGameData game = new BoardGameData();
 		game.setId(source.getBggId());
 		game.setSource(BoardGameSource.BOARDGAMEGEEK);
-		game.setImage(source.getImage());
+		game.setImage(source.getThumbnail());
 
 		if (source.getType().equalsIgnoreCase("boardgame")) {
 			game.setType(BoardGameType.GAME);

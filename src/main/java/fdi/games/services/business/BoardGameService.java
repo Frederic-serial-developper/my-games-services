@@ -105,7 +105,9 @@ public class BoardGameService {
 		boardGameWithData.setName(game.getName());
 		boardGameWithData.setStatus(game.getStatus());
 		boardGameWithData.setPlaysCount(game.getPlaysCount());
-		boardGameWithData.setData(this.gamesDataCache.getIfPresent(game.getId()));
+		final BoardGameData data = this.gamesDataCache.getIfPresent(game.getId());
+		boardGameWithData.setData(data);
+		boardGameWithData.setImage(game.getImage() == null ? data.getImage() : game.getImage());
 		return boardGameWithData;
 	}
 

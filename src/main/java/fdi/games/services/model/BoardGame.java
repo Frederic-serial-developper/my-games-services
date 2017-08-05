@@ -8,6 +8,8 @@ public class BoardGame {
 
 	private BoardGameStatus status;
 
+	private String image;
+
 	private Long playsCount = 0l;
 
 	public boolean isPreviouslyOwned() {
@@ -48,6 +50,14 @@ public class BoardGame {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getImage() {
+		return this.image;
+	}
+
+	public void setImage(String image) {
+		this.image = image;
 	}
 
 }
