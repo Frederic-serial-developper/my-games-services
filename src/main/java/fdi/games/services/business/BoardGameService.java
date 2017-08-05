@@ -3,6 +3,7 @@ package fdi.games.services.business;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import com.google.common.collect.Sets;
 
 import fdi.games.services.model.BoardGame;
 import fdi.games.services.model.BoardGameData;
+import fdi.games.services.model.BoardGameStatus;
 import fdi.games.services.model.BoardGameWithData;
 import fdi.games.services.model.BoardGamesCollection;
 import fdi.games.services.model.CollectionStatistics;
@@ -41,6 +43,7 @@ import fdi.games.services.ws.bgg.BGGException;
 import fdi.games.services.ws.bgg.model.BGGGame;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
 import fdi.games.services.ws.bgg.model.BGGPlay;
+import fdi.games.services.ws.bgg.model.BGGPlayItem;
 
 @Service
 public class BoardGameService {
@@ -170,11 +173,15 @@ public class BoardGameService {
 			}
 		}
 
-		final Collection<Play> plays = getPlays(username);
-		for (final Play play : plays) {
-			final Integer year = play.getDate().getYear();
-			final Integer count = play.getCount();
-			stats.incrementPlay(year, count);
+		try {
+			final Collection<Play> plays = this.playsCache.get(username);
+			for (final Play play : plays) {
+				final Integer year = play.getDate().getYear();
+				final Integer count = play.getCount();
+				stats.incrementPlay(year, count);
+			}
+		} catch (final ExecutionException e) {
+			logger.error("error while retrieving game plays for {}", username, e);
 		}
 
 		return stats;
@@ -199,9 +206,34 @@ public class BoardGameService {
 		return total;
 	}
 
-	public Collection<Play> getPlays(String username) throws BoardGameServiceException {
+	public Collection<BoardGameWithData> getPlays(String username) throws BoardGameServiceException {
 		try {
-			return this.playsCache.get(username);
+			final BoardGamesCollection userCollection = this.collectionsCache.getIfPresent(username);
+
+			final Collection<BoardGame> games = userCollection.getGames();
+			final Map<Long, BoardGameStatus> statusesByGameId = new HashMap<>();
+			for (final BoardGame boardGame : games) {
+				statusesByGameId.put(boardGame.getId(), boardGame.getStatus());
+			}
+
+			final Collection<Play> plays = this.playsCache.get(username);
+			final Map<Long, BoardGameWithData> playDataByGameId = new HashMap<>();
+			for (final Play play : plays) {
+				final Long bggId = play.getBggId();
+				BoardGameWithData game = playDataByGameId.get(bggId);
+				if (game == null) {
+					game = new BoardGameWithData();
+					game.setData(this.gamesDataCache.getIfPresent(bggId));
+					game.setId(bggId);
+					final BoardGameStatus boardGameStatus = statusesByGameId.get(bggId);
+					game.setStatus(boardGameStatus == null ? BoardGameStatus.OTHER : boardGameStatus);
+					game.setName(play.getGameName());
+				}
+				game.incrementPlayCount();
+				playDataByGameId.put(bggId, game);
+			}
+
+			return playDataByGameId.values();
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("error while retrieving plays for " + username, e);
 		}
@@ -211,12 +243,15 @@ public class BoardGameService {
 		try {
 			logger.info("fetch plays from boardgamegeek for {}", username);
 			final List<BGGPlay> plays = this.bggClient.getPlays(username);
+			final Set<Long> ids = plays.stream().map(bggPlay -> bggPlay.getItem().getId()).collect(Collectors.toSet());
+			fetchGameDetails(ids);
 			logger.info("found {} plays for user {}", plays.size(), username);
 
 			final Multimap<LocalDate, Play> playsByDate = ArrayListMultimap.create();
 			for (final BGGPlay bggPlay : plays) {
 				final LocalDate date = LocalDate.parse(bggPlay.getDate());
-				playsByDate.put(date, new Play(date, bggPlay.getItem().getName(), bggPlay.getQuantity()));
+				final BGGPlayItem game = bggPlay.getItem();
+				playsByDate.put(date, new Play(date, game.getId(), game.getName(), bggPlay.getQuantity()));
 			}
 			return playsByDate;
 		} catch (final BGGException e) {
@@ -242,6 +277,12 @@ public class BoardGameService {
 
 		logger.info("fetch games data from boardgamegeek for {}", username);
 		final Set<Long> ids = result.stream().map(game -> game.getBggId()).collect(Collectors.toSet());
+		fetchGameDetails(ids);
+
+		return result.stream().map(game -> BoardGameService.this.bggGameMapper.map(game)).collect(Collectors.toList());
+	}
+
+	private void fetchGameDetails(Set<Long> ids) throws BGGException {
 		final Set<Long> idsToFetch = Sets.newHashSet();
 		for (final Long id : ids) {
 			if (this.gamesDataCache.getIfPresent(id) == null) {
@@ -256,10 +297,7 @@ public class BoardGameService {
 		if (CollectionUtils.isNotEmpty(missingDetails)) {
 			logger.warn("cannot find details for {} : games {}", missingDetails.size(), missingDetails);
 		}
-
-		logger.info("found {} games details for user {}", detailsById.size(), username);
-
-		return result.stream().map(game -> BoardGameService.this.bggGameMapper.map(game)).collect(Collectors.toList());
+		logger.info("found {} games details", detailsById.size());
 	}
 
 	@PostConstruct

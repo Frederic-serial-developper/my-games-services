@@ -8,10 +8,14 @@ public class BoardGame {
 
 	private BoardGameStatus status;
 
-	private Long playsCount;
+	private Long playsCount = 0l;
 
 	public boolean isPreviouslyOwned() {
 		return BoardGameStatus.PREVIOUSLY_OWNED.equals(this.status);
+	}
+
+	public void incrementPlayCount() {
+		this.playsCount++;
 	}
 
 	public Long getPlaysCount() {

@@ -20,7 +20,6 @@ import fdi.games.services.business.BoardGameService;
 import fdi.games.services.business.BoardGameServiceException;
 import fdi.games.services.model.BoardGameWithData;
 import fdi.games.services.model.CollectionStatistics;
-import fdi.games.services.model.Play;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
 
 @CrossOrigin(origins = "*")
@@ -67,7 +66,7 @@ public class BGGController {
 	}
 
 	@GetMapping(path = "collection/{username}/plays", produces = "application/json; charset=UTF-8")
-	public Collection<Play> getCollectionPlays(@PathVariable("username") String username)
+	public Collection<BoardGameWithData> getCollectionPlays(@PathVariable("username") String username)
 			throws BoardGameServiceException {
 		logger.info("retrieve collection plays for user {}", username);
 		return this.service.getPlays(username);
