@@ -8,22 +8,25 @@ import fdi.games.services.LocalDateSerializer;
 
 public class Play {
 
-	private final String boardGame;
+	private final Long bggId;
+
+	private final String gameName;
 
 	@JsonSerialize(using = LocalDateSerializer.class)
 	private final LocalDate date;
 
 	private final Integer count;
 
-	public Play(LocalDate date, String boardGame, Integer count) {
+	public Play(LocalDate date, Long bggId, String gameName, Integer count) {
 		super();
 		this.date = date;
-		this.boardGame = boardGame;
+		this.bggId = bggId;
+		this.gameName = gameName;
 		this.count = count;
 	}
 
-	public String getBoardGame() {
-		return this.boardGame;
+	public Long getBggId() {
+		return this.bggId;
 	}
 
 	public LocalDate getDate() {
@@ -32,6 +35,10 @@ public class Play {
 
 	public Integer getCount() {
 		return this.count;
+	}
+
+	public String getGameName() {
+		return this.gameName;
 	}
 
 }

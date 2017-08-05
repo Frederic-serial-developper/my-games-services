@@ -18,9 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import fdi.games.services.business.BoardGameService;
 import fdi.games.services.business.BoardGameServiceException;
-import fdi.games.services.model.BoardGame;
+import fdi.games.services.model.BoardGameWithData;
 import fdi.games.services.model.CollectionStatistics;
-import fdi.games.services.model.Play;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
 
 @CrossOrigin(origins = "*")
@@ -34,13 +33,13 @@ public class BGGController {
 	private BoardGameService service;
 
 	@GetMapping(path = "collection/{username}", produces = "application/json; charset=UTF-8")
-	public Collection<BoardGame> getCollection(@PathVariable("username") String username,
+	public Collection<BoardGameWithData> getCollection(@PathVariable("username") String username,
 			@RequestParam("includeExpansions") boolean includeExpansions,
 			@RequestParam("includePreviouslyOwned") boolean includePreviouslyOwned) {
 		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
 				includeExpansions, includePreviouslyOwned);
 		try {
-			final Collection<BoardGame> result = this.service.getCollection(username, includeExpansions,
+			final Collection<BoardGameWithData> result = this.service.getCollection(username, includeExpansions,
 					includePreviouslyOwned);
 			logger.debug("found {} games for user {}", result.size(), username);
 			return result;
@@ -67,7 +66,7 @@ public class BGGController {
 	}
 
 	@GetMapping(path = "collection/{username}/plays", produces = "application/json; charset=UTF-8")
-	public Collection<Play> getCollectionPlays(@PathVariable("username") String username)
+	public Collection<BoardGameWithData> getCollectionPlays(@PathVariable("username") String username)
 			throws BoardGameServiceException {
 		logger.info("retrieve collection plays for user {}", username);
 		return this.service.getPlays(username);

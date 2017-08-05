@@ -46,6 +46,9 @@ public class BGGGameDetail {
 	@XmlElement(name = "image")
 	private String image;
 
+	@XmlElement(name = "statistics")
+	private BGGGameStat stats;
+
 	@XmlElement(name = "link")
 	private List<BGGGameInfo> infos;
 
@@ -107,4 +110,9 @@ public class BGGGameDetail {
 	public List<BGGGamePoll> getPolls() {
 		return this.polls;
 	}
+
+	public BGGGameStat getStats() {
+		return this.stats;
+	}
+
 }

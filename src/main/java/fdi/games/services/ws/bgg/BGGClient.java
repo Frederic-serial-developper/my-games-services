@@ -44,30 +44,31 @@ public class BGGClient {
 			throws BGGException {
 		String url = this.bggBaseUrl + "collection?";
 		url = url + "username=" + username;
-		url = url + "&stats=1";
 
 		final List<BGGGame> myGames = Lists.newArrayList();
-
+		String urlToExecute;
 		// get previous games
 		if (includePreviouslyOwned) {
-			final List<BGGGame> previousGames = getCollection(
-					url + "&prevowned=1" + "&excludesubtype=boardgameexpansion");
-			logger.info("found {} previously owned games for {}", previousGames.size(), username);
+			urlToExecute = url + "&prevowned=1" + "&excludesubtype=boardgameexpansion";
+			final List<BGGGame> previousGames = getCollection(urlToExecute);
+			logger.info("found {} previously owned games, url={}", previousGames.size(), urlToExecute);
 			myGames.addAll(previousGames);
 			if (includeExpansions) {
-				final List<BGGGame> previousExpansions = getCollection(
-						url + "&prevowned=1" + "&subtype=boardgameexpansion");
-				logger.info("found {} previously owned expansions for {}", previousExpansions.size(), username);
+				urlToExecute = url + "&prevowned=1" + "&subtype=boardgameexpansion";
+				final List<BGGGame> previousExpansions = getCollection(urlToExecute);
+				logger.info("found {} previously owned expansions, url={}", previousExpansions.size(), urlToExecute);
 				myGames.addAll(previousExpansions);
 			}
 		}
 		// get owned games
-		final List<BGGGame> ownedGames = getCollection(url + "&own=1" + "&excludesubtype=boardgameexpansion");
-		logger.info("found {} owned games for {}", ownedGames.size(), username);
+		urlToExecute = url + "&own=1" + "&excludesubtype=boardgameexpansion";
+		final List<BGGGame> ownedGames = getCollection(urlToExecute);
+		logger.info("found {} owned games, url={}", ownedGames.size(), urlToExecute);
 		myGames.addAll(ownedGames);
 		if (includeExpansions) {
-			final List<BGGGame> ownedExpansions = getCollection(url + "&own=1" + "&subtype=boardgameexpansion");
-			logger.info("found {} owned expansions for {}", ownedExpansions.size(), username);
+			urlToExecute = url + "&own=1" + "&subtype=boardgameexpansion";
+			final List<BGGGame> ownedExpansions = getCollection(urlToExecute);
+			logger.info("found {} owned expansions, url={}", ownedExpansions.size(), urlToExecute);
 			myGames.addAll(ownedExpansions);
 		}
 
@@ -130,9 +131,13 @@ public class BGGClient {
 				}
 				idParameter = idParameter + id;
 			}
-			final String url = this.bggBaseUrl + "thing?type=boardgame&id=" + idParameter;
+			String url = this.bggBaseUrl + "thing?";
+			// url = url + "type=boardgame";
+			url = url + "stats=1";
+			url = url + "&id=" + idParameter;
 			try {
-				logger.info("retrieve details for {} ids - {}/{}", subIds.size(), loop, partitionIds.size());
+				logger.info("retrieve details for {} ids - {}/{}, url={}", subIds.size(), loop, partitionIds.size(),
+						url);
 				final String xmlResult = this.connector.executeRequest(url);
 				final BGGGameDetailsList detailsLists = (BGGGameDetailsList) getUnmarshaller(BGGGameDetailsList.class)
 						.unmarshal(new StringReader(xmlResult));
