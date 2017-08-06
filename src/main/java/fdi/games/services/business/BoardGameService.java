@@ -132,6 +132,7 @@ public class BoardGameService {
 			logger.info("refresh cache informations for {}", vip);
 			try {
 				delay();
+				final long start = System.currentTimeMillis();
 				final Collection<BoardGame> games = fetchGames(vip);
 				this.collectionsCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
 				delay();
@@ -141,7 +142,7 @@ public class BoardGameService {
 				} catch (final BoardGameServiceException e) {
 					logger.error("cannot fetch plays for {}", vip, e);
 				}
-
+				logger.info("{} updated in {} msec", vip, System.currentTimeMillis() - start);
 			} catch (final BGGException e) {
 				logger.error("error while refreshing cache informations for " + vip, e);
 			}
@@ -210,31 +211,46 @@ public class BoardGameService {
 
 	public Collection<BoardGameWithData> getPlays(String username) throws BoardGameServiceException {
 		try {
+			final Map<Long, BoardGameWithData> playDataByGameId = new HashMap<>();
+
 			final BoardGamesCollection userCollection = this.collectionsCache.getIfPresent(username);
 
 			final Collection<BoardGame> games = userCollection.getGames();
-			final Map<Long, BoardGameStatus> statusesByGameId = new HashMap<>();
+			final Map<Long, BoardGame> userGamesById = new HashMap<>();
 			for (final BoardGame boardGame : games) {
-				statusesByGameId.put(boardGame.getId(), boardGame.getStatus());
+				userGamesById.put(boardGame.getId(), boardGame);
 			}
 
 			final Collection<Play> plays = this.playsCache.get(username);
-			final Map<Long, BoardGameWithData> playDataByGameId = new HashMap<>();
+			final Multimap<Long, Play> playsByGameId = ArrayListMultimap.create();
 			for (final Play play : plays) {
-				final Long bggId = play.getBggId();
-				BoardGameWithData game = playDataByGameId.get(bggId);
-				if (game == null) {
-					game = new BoardGameWithData();
-					game.setData(this.gamesDataCache.getIfPresent(bggId));
-					game.setId(bggId);
-					final BoardGameStatus boardGameStatus = statusesByGameId.get(bggId);
-					game.setStatus(boardGameStatus == null ? BoardGameStatus.OTHER : boardGameStatus);
-					game.setName(play.getGameName());
-				}
-				game.incrementPlayCount(play.getCount());
-				playDataByGameId.put(bggId, game);
+				playsByGameId.put(play.getBggId(), play);
 			}
 
+			// case of plays for games that are already in user collection
+			final Collection<Long> gamesInCollection = CollectionUtils.intersection(playsByGameId.keySet(),
+					userGamesById.keySet());
+			for (final Long bggId : gamesInCollection) {
+				playDataByGameId.put(bggId, getGameWithData(userGamesById.get(bggId)));
+			}
+
+			// case of plays for game that are not in the user collection
+			final Collection<Long> gamesNotInCollection = CollectionUtils.subtract(playsByGameId.keySet(),
+					userGamesById.keySet());
+			for (final Long bggId : gamesNotInCollection) {
+				final BoardGameWithData gameWithData = new BoardGameWithData();
+				gameWithData.setData(this.gamesDataCache.getIfPresent(bggId));
+				gameWithData.setId(bggId);
+				gameWithData.setStatus(BoardGameStatus.OTHER);
+				gameWithData.setImage(gameWithData.getData().getImage());
+
+				final Collection<Play> somePlays = playsByGameId.get(bggId);
+				for (final Play play : somePlays) {
+					gameWithData.setName(play.getGameName());
+					gameWithData.incrementPlayCount(play.getCount());
+				}
+				playDataByGameId.put(bggId, gameWithData);
+			}
 			return playDataByGameId.values();
 		} catch (final ExecutionException e) {
 			throw new BoardGameServiceException("error while retrieving plays for " + username, e);

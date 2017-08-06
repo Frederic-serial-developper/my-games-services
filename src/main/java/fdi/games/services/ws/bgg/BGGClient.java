@@ -77,7 +77,10 @@ public class BGGClient {
 
 	public List<BGGPlay> getPlays(String username) throws BGGException {
 		logger.info("get plays for {}", username);
-		final String url = this.bggBaseUrl + "plays?username=" + username + "&page=";
+		String url = this.bggBaseUrl + "plays?";
+		url = url + "username=" + username;
+		url = url + "&type=thing";
+		url = url + "&page=";
 		try {
 			final List<BGGPlay> plays = new ArrayList<>();
 			boolean shouldContinue = true;
@@ -132,8 +135,8 @@ public class BGGClient {
 				idParameter = idParameter + id;
 			}
 			String url = this.bggBaseUrl + "thing?";
-			// url = url + "type=boardgame";
-			url = url + "stats=1";
+			url = url + "type=boardgame,boardgameexpansion";
+			url = url + "&stats=1";
 			url = url + "&id=" + idParameter;
 			try {
 				logger.info("retrieve details for {} ids - {}/{}, url={}", subIds.size(), loop, partitionIds.size(),
