@@ -9,10 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -50,8 +53,10 @@ public class BoardGameService {
 
 	final static Logger logger = LoggerFactory.getLogger(BoardGameService.class);
 
-	private static final long _15_MIN = 900_000;
+	private static final long _2_HOURS = 7_200_000;
 	private static final long _10_SECONDS = 10_000;
+
+	private static final ExecutorService executor = Executors.newFixedThreadPool(1);
 
 	@Inject
 	private BGGClient bggClient;
@@ -126,32 +131,44 @@ public class BoardGameService {
 		return filteredGames;
 	}
 
-	@Scheduled(initialDelay = _10_SECONDS, fixedDelay = _15_MIN)
+	@Scheduled(initialDelay = _10_SECONDS, fixedDelay = _2_HOURS)
 	private void refreshVips() throws InterruptedException {
-		for (final String vip : this.vips) {
-			logger.info("refresh cache informations for {}", vip);
-			try {
-				delay();
-				final long start = System.currentTimeMillis();
-				final Collection<BoardGame> games = fetchGames(vip);
-				this.collectionsCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
-				delay();
+		final Runnable runnableTask = () -> {
+			for (final String vip : this.vips) {
+				logger.info("refresh cache informations for {}", vip);
 				try {
-					final Multimap<LocalDate, Play> plays = fetchPlays(vip);
-					this.playsCache.put(vip, plays.values());
-				} catch (final BoardGameServiceException e) {
-					logger.error("cannot fetch plays for {}", vip, e);
+					delay();
+					final long start = System.currentTimeMillis();
+					final Collection<BoardGame> games = fetchGames(vip);
+					this.collectionsCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
+					delay();
+					try {
+						final Multimap<LocalDate, Play> plays = fetchPlays(vip);
+						this.playsCache.put(vip, plays.values());
+					} catch (final BoardGameServiceException e) {
+						logger.error("cannot fetch plays for {}", vip, e);
+					}
+					logger.info("{} updated in {} msec", vip, System.currentTimeMillis() - start);
+				} catch (final BGGException e) {
+					logger.error("error while refreshing cache informations for " + vip, e);
 				}
-				logger.info("{} updated in {} msec", vip, System.currentTimeMillis() - start);
-			} catch (final BGGException e) {
-				logger.error("error while refreshing cache informations for " + vip, e);
 			}
+		};
+		try {
+			executor.execute(runnableTask);
+			executor.awaitTermination(1, TimeUnit.HOURS);
+		} catch (final Throwable e) {
+			logger.error("error while retrieve user data", e);
 		}
 	}
 
-	private void delay() throws InterruptedException {
+	private void delay() {
 		logger.debug("wait {} seconds", this.bggDelay);
-		TimeUnit.SECONDS.sleep(this.bggDelay);
+		try {
+			TimeUnit.SECONDS.sleep(this.bggDelay);
+		} catch (final InterruptedException e) {
+			logger.error("cannot wait", e);
+		}
 	}
 
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
@@ -341,5 +358,10 @@ public class BoardGameService {
 						return playsByDate.values();
 					}
 				});
+	}
+
+	@PreDestroy
+	private void destroy() {
+		executor.shutdownNow();
 	}
 }

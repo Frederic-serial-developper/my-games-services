@@ -9,12 +9,19 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BGGConnector {
 
 	final static Logger logger = LoggerFactory.getLogger(BGGConnector.class);
+
+	@Value("${my-games-services.bgg.connector.delayBetweenExecutions}")
+	private Integer delayBetweenExecutions;
+
+	@Value("${my-games-services.bgg.connector.delayWaitingCode200}")
+	private Integer delayWaitingCode200;
 
 	public String executeRequest(String urlToExecute) throws BGGException {
 		try {
@@ -24,11 +31,11 @@ public class BGGConnector {
 			if (connection instanceof HttpURLConnection) {
 				HttpURLConnection httpConnection = null;
 				int responseCode = 0;
-
+				Thread.sleep(this.delayBetweenExecutions);
 				do {
 					if (responseCode != 0) {
 						logger.trace("wait response status is 200 for {}", urlToExecute);
-						Thread.sleep(5000);
+						Thread.sleep(this.delayWaitingCode200);
 					}
 					httpConnection = (HttpURLConnection) url.openConnection();
 					responseCode = httpConnection.getResponseCode();
