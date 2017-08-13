@@ -1,6 +1,10 @@
 package fdi.games.services.model;
 
-public class BoardGame {
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public class BoardGameUserData {
 
 	private Long id;
 
@@ -12,12 +16,30 @@ public class BoardGame {
 
 	private Long playsCount = 0l;
 
+	private final List<Play> plays;
+
+	public BoardGameUserData() {
+		this.plays = new ArrayList<>();
+	}
+
 	public boolean isPreviouslyOwned() {
 		return BoardGameStatus.PREVIOUSLY_OWNED.equals(this.status);
 	}
 
 	public void incrementPlayCount(Integer count) {
 		this.playsCount = this.playsCount + count;
+	}
+
+	public void addPlay(Play play) {
+		if (play != null) {
+			this.plays.add(play);
+		}
+	}
+
+	public void addAllPlays(Collection<Play> plays) {
+		if (plays != null) {
+			this.plays.addAll(plays);
+		}
 	}
 
 	public Long getPlaysCount() {
@@ -58,6 +80,10 @@ public class BoardGame {
 
 	public void setImage(String image) {
 		this.image = image;
+	}
+
+	public List<Play> getPlays() {
+		return this.plays;
 	}
 
 }

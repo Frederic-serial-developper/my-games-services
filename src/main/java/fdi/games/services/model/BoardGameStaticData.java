@@ -3,7 +3,7 @@ package fdi.games.services.model;
 import java.util.HashSet;
 import java.util.Set;
 
-public class BoardGameData {
+public class BoardGameStaticData {
 
 	private Long id;
 
@@ -33,7 +33,7 @@ public class BoardGameData {
 
 	private final Set<String> expansions;
 
-	public BoardGameData() {
+	public BoardGameStaticData() {
 		super();
 		this.categories = new HashSet<>();
 		this.mechanisms = new HashSet<>();

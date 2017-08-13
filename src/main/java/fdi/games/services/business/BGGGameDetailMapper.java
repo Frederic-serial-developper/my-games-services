@@ -6,20 +6,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import fdi.games.services.model.BoardGameData;
+import fdi.games.services.model.BoardGameStaticData;
 import fdi.games.services.model.BoardGameSource;
 import fdi.games.services.model.BoardGameType;
 import fdi.games.services.ws.bgg.model.BGGGameDetail;
 import fdi.games.services.ws.bgg.model.BGGGameInfo;
 
 @Service
-public class BGGGameDetailMapper implements Mapper<BGGGameDetail, BoardGameData> {
+public class BGGGameDetailMapper implements Mapper<BGGGameDetail, BoardGameStaticData> {
 
 	final static Logger logger = LoggerFactory.getLogger(BGGGameDetailMapper.class);
 
 	@Override
-	public BoardGameData map(BGGGameDetail source) {
-		final BoardGameData game = new BoardGameData();
+	public BoardGameStaticData map(BGGGameDetail source) {
+		final BoardGameStaticData game = new BoardGameStaticData();
 		game.setId(source.getBggId());
 		game.setSource(BoardGameSource.BOARDGAMEGEEK);
 		game.setImage(source.getThumbnail());

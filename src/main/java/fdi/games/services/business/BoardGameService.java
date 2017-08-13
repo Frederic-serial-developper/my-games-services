@@ -33,10 +33,10 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-import fdi.games.services.model.BoardGame;
-import fdi.games.services.model.BoardGameData;
+import fdi.games.services.model.BoardGameStaticData;
 import fdi.games.services.model.BoardGameStatus;
-import fdi.games.services.model.BoardGameWithData;
+import fdi.games.services.model.BoardGameUserData;
+import fdi.games.services.model.BoardGameUserFullData;
 import fdi.games.services.model.BoardGamesCollection;
 import fdi.games.services.model.CollectionStatistics;
 import fdi.games.services.model.Play;
@@ -87,40 +87,46 @@ public class BoardGameService {
 
 	private Cache<String, BoardGamesCollection> collectionsCache;
 
-	private Cache<Long, BoardGameData> gamesDataCache;
+	private Cache<Long, BoardGameStaticData> gamesDataCache;
 
-	private LoadingCache<String, Collection<Play>> playsCache;
+	private LoadingCache<String, Multimap<Long, Play>> playsCache;
 
-	public Collection<BoardGameWithData> getCollection(String username, boolean includeExpansions,
+	public Collection<BoardGameUserFullData> getCollection(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
 		logger.info("retrieve collection for user {}, includeExpansions={}, includePreviouslyOwned={}", username,
 				includeExpansions, includePreviouslyOwned);
-		final Collection<BoardGame> games = this.collectionsCache.getIfPresent(username).getGames();
-		final Collection<BoardGame> filteredGames = filter(games, includeExpansions, includePreviouslyOwned);
+		final Collection<BoardGameUserData> games = this.collectionsCache.getIfPresent(username).getGames();
+		final Collection<BoardGameUserData> filteredGames = filter(games, includeExpansions, includePreviouslyOwned);
 
-		final Collection<BoardGameWithData> gamesWithData = filteredGames.stream().map(game -> getGameWithData(game))
-				.collect(Collectors.toSet());
+		final Collection<BoardGameUserFullData> gamesWithData = filteredGames.stream()
+				.map(game -> getGameWithData(username, game)).collect(Collectors.toSet());
 
 		return gamesWithData;
 	}
 
-	private BoardGameWithData getGameWithData(BoardGame game) {
-		final BoardGameWithData boardGameWithData = new BoardGameWithData();
+	private BoardGameUserFullData getGameWithData(String username, BoardGameUserData game) {
+		final BoardGameUserFullData boardGameWithData = new BoardGameUserFullData();
 		boardGameWithData.setId(game.getId());
 		boardGameWithData.setName(game.getName());
 		boardGameWithData.setStatus(game.getStatus());
 		boardGameWithData.setPlaysCount(game.getPlaysCount());
-		final BoardGameData data = this.gamesDataCache.getIfPresent(game.getId());
+		final BoardGameStaticData data = this.gamesDataCache.getIfPresent(game.getId());
 		boardGameWithData.setData(data);
 		boardGameWithData.setImage(game.getImage() == null ? data.getImage() : game.getImage());
+		try {
+			final Multimap<Long, Play> plays = this.playsCache.get(username);
+			boardGameWithData.addAllPlays(plays.get(game.getId()));
+		} catch (final ExecutionException e) {
+			logger.error("error while retrieving plays from cache for " + username, e);
+		}
 		return boardGameWithData;
 	}
 
-	private Collection<BoardGame> filter(Collection<BoardGame> games, boolean includeExpansions,
+	private Collection<BoardGameUserData> filter(Collection<BoardGameUserData> games, boolean includeExpansions,
 			boolean includePreviouslyOwned) {
-		final Set<BoardGame> filteredGames = new HashSet<>();
-		for (final BoardGame game : games) {
-			final BoardGameData gameData = this.gamesDataCache.getIfPresent(game.getId());
+		final Set<BoardGameUserData> filteredGames = new HashSet<>();
+		for (final BoardGameUserData game : games) {
+			final BoardGameStaticData gameData = this.gamesDataCache.getIfPresent(game.getId());
 			final boolean shouldFilter = !includeExpansions && gameData.isExpansion()
 					|| !includePreviouslyOwned && game.isPreviouslyOwned();
 			if (!shouldFilter) {
@@ -139,12 +145,12 @@ public class BoardGameService {
 				try {
 					delay();
 					final long start = System.currentTimeMillis();
-					final Collection<BoardGame> games = fetchGames(vip);
+					final Collection<BoardGameUserData> games = fetchGames(vip);
 					this.collectionsCache.put(vip, new BoardGamesCollection(LocalDateTime.now(), games));
 					delay();
 					try {
-						final Multimap<LocalDate, Play> plays = fetchPlays(vip);
-						this.playsCache.put(vip, plays.values());
+						final Multimap<Long, Play> plays = fetchPlays(vip);
+						this.playsCache.put(vip, plays);
 					} catch (final BoardGameServiceException e) {
 						logger.error("cannot fetch plays for {}", vip, e);
 					}
@@ -176,7 +182,7 @@ public class BoardGameService {
 		final BoardGamesCollection boardGamesCollection = this.collectionsCache.getIfPresent(username);
 		final CollectionStatistics stats = new CollectionStatistics(boardGamesCollection.getLasUpdate());
 
-		final Collection<BoardGame> games = filter(boardGamesCollection.getGames(), includeExpansions,
+		final Collection<BoardGameUserData> games = filter(boardGamesCollection.getGames(), includeExpansions,
 				includePreviouslyOwned);
 
 		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
@@ -184,8 +190,8 @@ public class BoardGameService {
 		stats.setTotalSize(new Long(games.size()));
 		stats.setTotalPlays(countPlays(games));
 
-		for (final BoardGame boardGame : games) {
-			final BoardGameData gameData = this.gamesDataCache.getIfPresent(boardGame.getId());
+		for (final BoardGameUserData boardGame : games) {
+			final BoardGameStaticData gameData = this.gamesDataCache.getIfPresent(boardGame.getId());
 			if (gameData != null) {
 				final RatingLevel ratingLevel = getRatingLevel(gameData);
 				stats.incrementRatingLevel(ratingLevel);
@@ -194,8 +200,8 @@ public class BoardGameService {
 		}
 
 		try {
-			final Collection<Play> plays = this.playsCache.get(username);
-			for (final Play play : plays) {
+			final Multimap<Long, Play> plays = this.playsCache.get(username);
+			for (final Play play : plays.values()) {
 				final Integer year = play.getDate().getYear();
 				final Integer count = play.getCount();
 				stats.incrementPlay(year, count);
@@ -207,7 +213,7 @@ public class BoardGameService {
 		return stats;
 	}
 
-	private RatingLevel getRatingLevel(BoardGameData game) {
+	private RatingLevel getRatingLevel(BoardGameStaticData game) {
 		final RatingLevel[] levelsAvailable = RatingLevel.values();
 		final Double rating = game.getRating();
 		for (final RatingLevel ratingLevel : levelsAvailable) {
@@ -218,44 +224,41 @@ public class BoardGameService {
 		return null;
 	}
 
-	private Long countPlays(Collection<BoardGame> games) {
+	private Long countPlays(Collection<BoardGameUserData> games) {
 		Long total = new Long(0);
-		for (final BoardGame boardGame : games) {
+		for (final BoardGameUserData boardGame : games) {
 			total = total + boardGame.getPlaysCount();
 		}
 		return total;
 	}
 
-	public Collection<BoardGameWithData> getPlays(String username) throws BoardGameServiceException {
+	public Collection<BoardGameUserFullData> getPlays(String username) throws BoardGameServiceException {
 		try {
-			final Map<Long, BoardGameWithData> playDataByGameId = new HashMap<>();
+			final Map<Long, BoardGameUserFullData> playDataByGameId = new HashMap<>();
 
 			final BoardGamesCollection userCollection = this.collectionsCache.getIfPresent(username);
 
-			final Collection<BoardGame> games = userCollection.getGames();
-			final Map<Long, BoardGame> userGamesById = new HashMap<>();
-			for (final BoardGame boardGame : games) {
+			final Collection<BoardGameUserData> games = userCollection.getGames();
+			final Map<Long, BoardGameUserData> userGamesById = new HashMap<>();
+			for (final BoardGameUserData boardGame : games) {
 				userGamesById.put(boardGame.getId(), boardGame);
 			}
 
-			final Collection<Play> plays = this.playsCache.get(username);
-			final Multimap<Long, Play> playsByGameId = ArrayListMultimap.create();
-			for (final Play play : plays) {
-				playsByGameId.put(play.getBggId(), play);
-			}
+			final Multimap<Long, Play> playsByGameId = this.playsCache.get(username);
 
 			// case of plays for games that are already in user collection
 			final Collection<Long> gamesInCollection = CollectionUtils.intersection(playsByGameId.keySet(),
 					userGamesById.keySet());
 			for (final Long bggId : gamesInCollection) {
-				playDataByGameId.put(bggId, getGameWithData(userGamesById.get(bggId)));
+				final BoardGameUserFullData gameWithData = getGameWithData(username, userGamesById.get(bggId));
+				playDataByGameId.put(bggId, gameWithData);
 			}
 
 			// case of plays for game that are not in the user collection
 			final Collection<Long> gamesNotInCollection = CollectionUtils.subtract(playsByGameId.keySet(),
 					userGamesById.keySet());
 			for (final Long bggId : gamesNotInCollection) {
-				final BoardGameWithData gameWithData = new BoardGameWithData();
+				final BoardGameUserFullData gameWithData = new BoardGameUserFullData();
 				gameWithData.setData(this.gamesDataCache.getIfPresent(bggId));
 				gameWithData.setId(bggId);
 				gameWithData.setStatus(BoardGameStatus.OTHER);
@@ -265,6 +268,7 @@ public class BoardGameService {
 				for (final Play play : somePlays) {
 					gameWithData.setName(play.getGameName());
 					gameWithData.incrementPlayCount(play.getCount());
+					gameWithData.addPlay(play);
 				}
 				playDataByGameId.put(bggId, gameWithData);
 			}
@@ -274,7 +278,7 @@ public class BoardGameService {
 		}
 	}
 
-	private Multimap<LocalDate, Play> fetchPlays(String username) throws BoardGameServiceException {
+	private Multimap<Long, Play> fetchPlays(String username) throws BoardGameServiceException {
 		try {
 			logger.info("fetch plays from boardgamegeek for {}", username);
 			final List<BGGPlay> plays = this.bggClient.getPlays(username);
@@ -282,13 +286,13 @@ public class BoardGameService {
 			fetchGameDetails(ids);
 			logger.info("found {} plays for user {}", plays.size(), username);
 
-			final Multimap<LocalDate, Play> playsByDate = ArrayListMultimap.create();
+			final Multimap<Long, Play> playsByGameId = ArrayListMultimap.create();
 			for (final BGGPlay bggPlay : plays) {
 				final LocalDate date = LocalDate.parse(bggPlay.getDate());
 				final BGGPlayItem game = bggPlay.getItem();
-				playsByDate.put(date, new Play(date, game.getId(), game.getName(), bggPlay.getQuantity()));
+				playsByGameId.put(game.getId(), new Play(date, game.getId(), game.getName(), bggPlay.getQuantity()));
 			}
-			return playsByDate;
+			return playsByGameId;
 		} catch (final BGGException e) {
 			throw new BoardGameServiceException("error while retrieving plays from BGG", e);
 		}
@@ -302,10 +306,10 @@ public class BoardGameService {
 		}
 	}
 
-	private Collection<BoardGame> fetchGames(String username) throws BGGException {
+	private Collection<BoardGameUserData> fetchGames(String username) throws BGGException {
 		logger.info("fetch collection from boardgamegeek for {}", username);
 		final List<BGGGame> result = BoardGameService.this.bggClient.getCollection(username, true, true);
-		final Set<BoardGame> games = result.stream().map(game -> this.bggGameMapper.map(game))
+		final Set<BoardGameUserData> games = result.stream().map(game -> this.bggGameMapper.map(game))
 				.collect(Collectors.toSet());
 		this.collectionsCache.put(username, new BoardGamesCollection(LocalDateTime.now(), games));
 		logger.info("found {} games for user {}", result.size(), username);
@@ -348,14 +352,14 @@ public class BoardGameService {
 
 		this.playsCache = CacheBuilder.newBuilder().maximumSize(this.cachePlaysMaxSize)
 				.expireAfterWrite(this.cacheExpiration, TimeUnit.MINUTES)
-				.build(new CacheLoader<String, Collection<Play>>() {
+				.build(new CacheLoader<String, Multimap<Long, Play>>() {
 					@Override
-					public Collection<Play> load(String username) throws BoardGameServiceException, BGGException {
+					public Multimap<Long, Play> load(String username) throws BoardGameServiceException, BGGException {
 						final long start = System.currentTimeMillis();
-						final Multimap<LocalDate, Play> playsByDate = fetchPlays(username);
+						final Multimap<Long, Play> playsByGameId = fetchPlays(username);
 						final long end = System.currentTimeMillis();
-						logger.info("{} games fetched for {} in {} msec", playsByDate.size(), username, end - start);
-						return playsByDate.values();
+						logger.info("{} games fetched for {} in {} msec", playsByGameId.size(), username, end - start);
+						return playsByGameId;
 					}
 				});
 	}

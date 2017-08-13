@@ -1,16 +1,16 @@
 package fdi.games.services.model;
 
-public class BoardGameWithData extends BoardGame {
+public class BoardGameUserFullData extends BoardGameUserData {
 
-	private BoardGameData data;
+	private BoardGameStaticData data;
 
 	private String image;
 
-	public BoardGameData getData() {
+	public BoardGameStaticData getData() {
 		return this.data;
 	}
 
-	public void setData(BoardGameData data) {
+	public void setData(BoardGameStaticData data) {
 		this.data = data;
 	}
 

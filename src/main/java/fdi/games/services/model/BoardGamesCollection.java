@@ -7,9 +7,9 @@ public class BoardGamesCollection {
 
 	private final LocalDateTime lasUpdate;
 
-	private final Collection<BoardGame> games;
+	private final Collection<BoardGameUserData> games;
 
-	public BoardGamesCollection(LocalDateTime lasUpdate, Collection<BoardGame> games) {
+	public BoardGamesCollection(LocalDateTime lasUpdate, Collection<BoardGameUserData> games) {
 		super();
 		this.games = games;
 		this.lasUpdate = lasUpdate;
@@ -19,7 +19,7 @@ public class BoardGamesCollection {
 		return this.lasUpdate;
 	}
 
-	public Collection<BoardGame> getGames() {
+	public Collection<BoardGameUserData> getGames() {
 		return this.games;
 	}
 
