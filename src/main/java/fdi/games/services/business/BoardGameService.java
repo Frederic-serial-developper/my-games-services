@@ -262,7 +262,7 @@ public class BoardGameService {
 				gameWithData.setData(this.gamesDataCache.getIfPresent(bggId));
 				gameWithData.setId(bggId);
 				gameWithData.setStatus(BoardGameStatus.OTHER);
-				gameWithData.setImage(gameWithData.getData().getImage());
+				gameWithData.setImage(gameWithData.getData() == null ? null : gameWithData.getData().getImage());
 
 				final Collection<Play> somePlays = playsByGameId.get(bggId);
 				for (final Play play : somePlays) {
