@@ -187,18 +187,35 @@ public class BoardGameService {
 
 		logger.info("compute collection statistics for user {}, includeExpansions={}", username, includeExpansions);
 
-		stats.setTotalSize(new Long(games.size()));
-		stats.setTotalPlays(countPlays(games));
-
 		for (final BoardGameUserData boardGame : games) {
 			final BoardGameStaticData gameData = this.gamesDataCache.getIfPresent(boardGame.getId());
 			if (gameData != null) {
 				final RatingLevel ratingLevel = getRatingLevel(gameData);
-				stats.incrementRatingLevel(ratingLevel);
-				stats.incrementYear(gameData.getYear());
+				if (gameData.isExpansion()) {
+					if (boardGame.isPreviouslyOwned()) {
+						stats.getPreviousExpansionsStats().incrementTotalSize();
+						stats.getPreviousExpansionsStats().incrementRatingLevel(ratingLevel);
+						stats.getPreviousExpansionsStats().incrementYear(gameData.getYear());
+					} else {
+						stats.getExpansionsStats().incrementTotalSize();
+						stats.getExpansionsStats().incrementRatingLevel(ratingLevel);
+						stats.getExpansionsStats().incrementYear(gameData.getYear());
+					}
+				} else {
+					if (boardGame.isPreviouslyOwned()) {
+						stats.getPreviousGamesStats().incrementTotalSize();
+						stats.getPreviousGamesStats().incrementRatingLevel(ratingLevel);
+						stats.getPreviousGamesStats().incrementYear(gameData.getYear());
+					} else {
+						stats.getGamesStats().incrementTotalSize();
+						stats.getGamesStats().incrementRatingLevel(ratingLevel);
+						stats.getGamesStats().incrementYear(gameData.getYear());
+					}
+				}
 			}
 		}
 
+		stats.setTotalPlays(countPlays(games));
 		try {
 			final Multimap<Long, Play> plays = this.playsCache.get(username);
 			for (final Play play : plays.values()) {
