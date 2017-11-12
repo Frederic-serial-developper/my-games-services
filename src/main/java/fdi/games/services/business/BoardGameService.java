@@ -180,6 +180,9 @@ public class BoardGameService {
 	public CollectionStatistics getStatistics(String username, boolean includeExpansions,
 			boolean includePreviouslyOwned) throws BoardGameServiceException {
 		final BoardGamesCollection boardGamesCollection = this.collectionsCache.getIfPresent(username);
+		if (boardGamesCollection == null) {
+			return new CollectionStatistics(LocalDateTime.now());
+		}
 		final CollectionStatistics stats = new CollectionStatistics(boardGamesCollection.getLasUpdate());
 
 		final Collection<BoardGameUserData> games = filter(boardGamesCollection.getGames(), includeExpansions,
@@ -215,14 +218,16 @@ public class BoardGameService {
 			}
 		}
 
-		stats.setTotalPlays(countPlays(games));
 		try {
+			long total = 0;
 			final Multimap<Long, Play> plays = this.playsCache.get(username);
 			for (final Play play : plays.values()) {
 				final Integer year = play.getDate().getYear();
 				final Integer count = play.getCount();
 				stats.incrementPlay(year, count);
+				total = total + count;
 			}
+			stats.setTotalPlays(total);
 		} catch (final ExecutionException e) {
 			logger.error("error while retrieving game plays for {}", username, e);
 		}
@@ -239,14 +244,6 @@ public class BoardGameService {
 			}
 		}
 		return null;
-	}
-
-	private Long countPlays(Collection<BoardGameUserData> games) {
-		Long total = new Long(0);
-		for (final BoardGameUserData boardGame : games) {
-			total = total + boardGame.getPlaysCount();
-		}
-		return total;
 	}
 
 	public Collection<BoardGameUserFullData> getPlays(String username) throws BoardGameServiceException {
